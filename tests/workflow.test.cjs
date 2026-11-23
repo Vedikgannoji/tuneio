@@ -1,6 +1,6 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const {run} = require('../autotuner/workflow.js');
+const {run} = require('../tuneio/workflow.js');
 
 function server() {
   let user, product, order;
@@ -102,7 +102,7 @@ test('Stop during pacing interrupts the delay promptly', async () => {
 
 test('Dashboard public fetch omits ambient cookies while preserving request options', async () => {
   const fs = require('node:fs'), vm = require('node:vm');
-  const html = fs.readFileSync(require('node:path').join(__dirname, '../autotuner/dashboard.html'), 'utf8');
+  const html = fs.readFileSync(require('node:path').join(__dirname, '../tuneio/dashboard.html'), 'utf8');
   const helper = html.slice(html.indexOf('function publicFetch('), html.indexOf('function node('));
   const calls = [];
   const context = vm.createContext({fetch: (url, options) => {calls.push({url, options}); return Promise.resolve('ok');}});

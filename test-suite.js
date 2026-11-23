@@ -1,5 +1,5 @@
 /**
- * Comprehensive Test Suite for API Performance Autotuner
+ * Comprehensive Test Suite for tuneio
  * Tests backend APIs, performance tracking, caching, and data accuracy
  */
 
@@ -503,7 +503,7 @@ function generateReport() {
 
 // Run all tests
 async function runAllTests() {
-    console.log('🧪 API PERFORMANCE AUTOTUNER - COMPREHENSIVE TEST SUITE');
+    console.log('🧪 tuneio - COMPREHENSIVE TEST SUITE');
     console.log('='.repeat(60));
     
     try {

@@ -8,9 +8,9 @@ from unittest.mock import Mock
 import httpx
 import pytest
 
-from autotuner import __version__, cli
-from autotuner.product_config import ProductConfig
-from autotuner.session import ControlSession
+from tuneio import __version__, cli
+from tuneio.product_config import ProductConfig
+from tuneio.session import ControlSession
 
 
 def test_session_metadata_is_user_facing(tmp_path):

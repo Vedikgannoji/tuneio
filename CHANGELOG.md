@@ -21,7 +21,7 @@
 
 - Add a keyboard-operated terminal workspace for configuration, session insights, cache controls and exports.
 - Keep help, version and menu startup independent of proxy/database imports; interactive entry adds no runtime dependency.
-- Support offline menu descriptions with `autotuner menu --json` and explicit non-interactive operation with `--no-input`.
+- Support offline menu descriptions with `tuneio menu --json` and explicit non-interactive operation with `--no-input`.
 - Wait for bounded server-side completion before benchmark checkpoints; keep leaks and accounting mismatches as failures.
 - Fix cache waiter counts when lock acquisition is deferred, including on Python 3.11.
 - Use product features and version information in public documentation and session metadata.

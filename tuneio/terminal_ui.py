@@ -24,9 +24,8 @@ PALETTE = {
 }
 GRADIENT = ((234,207,255), (221,183,255), (201,153,252), (177,123,245), (151,100,226))
 PIXELS = {
-    'A': (14, 17, 31, 17, 17), 'U': (17, 17, 17, 17, 14), 'T': (31, 4, 4, 4, 4),
-    'O': (14, 17, 17, 17, 14), 'N': (17, 25, 21, 19, 17), 'E': (31, 16, 30, 16, 31),
-    'R': (30, 17, 30, 18, 17),
+    't': (8, 8, 30, 8, 7), 'u': (0, 0, 17, 17, 15), 'n': (0, 0, 30, 17, 17),
+    'e': (0, 14, 31, 16, 14), 'i': (4, 0, 12, 4, 14), 'o': (0, 0, 14, 17, 14),
 }
 ACTIVE_SCREEN = ContextVar('active_terminal_screen', default=None)
 
@@ -114,7 +113,7 @@ class Panel:
             self._cache = cache_key, rendered
         body = self._cache[1]
         label = ' / DETAILS' if self.show_details else ''
-        top = [('title', f'AUTOTUNER / {self.title}{label}'), ('border', '-'*width)]
+        top = [('title', f'tuneio / {self.title}{label}'), ('border', '-'*width)]
         help_line = 'Up/Down scroll  PgUp/PgDn page'
         if prompt is None:
             footer = [('muted', help_line + ('  d details' if self.details else '') + '  Enter back')]
@@ -200,12 +199,12 @@ class Theme:
         return f'\x1b[{PALETTE[style]}m{text}\x1b[0m' if self.rich else text
 
     def banner(self, width, height):
-        if not self.rich or width < 53 or height < 21:
-            return [self.paint('title', clip('AUTOTUNER', width))]
+        if not self.rich or width < 35 or height < 21:
+            return [self.paint('title', clip('tuneio', width))]
         pixel = self.glyph('█', '#')
         return [f'\x1b[38;2;{red};{green};{blue}m' +
                 ' '.join(''.join(pixel if PIXELS[letter][row] & (1 << column) else ' '
-                                 for column in range(4, -1, -1)) for letter in 'AUTOTUNER') + '\x1b[0m'
+                                 for column in range(4, -1, -1)) for letter in 'tuneio') + '\x1b[0m'
                 for row, (red, green, blue) in enumerate(GRADIENT)]
 
     def screen(self, lines):

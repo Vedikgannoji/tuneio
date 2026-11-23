@@ -2,10 +2,10 @@ import asyncio
 from contextlib import closing
 import json
 
-from autotuner.product_config import ProductConfig
-from autotuner.storage import TelemetryStorage
-from autotuner.benchmarking import config_for
-from autotuner.core.controller import AdaptiveController
+from tuneio.product_config import ProductConfig
+from tuneio.storage import TelemetryStorage
+from tuneio.benchmarking import config_for
+from tuneio.core.controller import AdaptiveController
 
 
 def test_minimum_disk_budget_reclaims_audit_rows_and_keeps_writer_healthy(tmp_path):

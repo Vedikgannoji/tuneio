@@ -7,7 +7,7 @@ from pathlib import Path
 def check(data,minimum=90):
     if not 0<=minimum<=100:raise ValueError('Minimum must be 0–100')
     summaries=[value['summary'] for key,value in data['files'].items()
-               if key.replace('\\','/').startswith('autotuner/core/')]
+               if key.replace('\\','/').startswith('tuneio/core/')]
     if not summaries:raise ValueError('Core coverage records missing')
     totals={key:sum(s[key] for s in summaries) for key in ('num_statements','covered_lines','num_branches','covered_branches')}
     statements=100*totals['covered_lines']/totals['num_statements'] if totals['num_statements'] else 100.

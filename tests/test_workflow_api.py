@@ -21,7 +21,7 @@ run({reads:6,delayMs:0},(method,path,body)=>new Promise(resolve=>{
 })).then(report=>{process.stdout.write(JSON.stringify({type:'report',report})+'\n');rl.close();})
 .catch(error=>{console.error(error);process.exitCode=1;rl.close();});
 """
-    process = subprocess.Popen(['node', '-e', script, str(Path('autotuner/workflow.js').resolve())],
+    process = subprocess.Popen(['node', '-e', script, str(Path('tuneio/workflow.js').resolve())],
                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                text=True, encoding='utf-8')
     async def scenario():

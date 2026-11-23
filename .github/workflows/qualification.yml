@@ -20,10 +20,10 @@ jobs:
       - run: pip install -e ".[test,benchmark]"
       - run: node --test tests/workflow.test.cjs tests/product_ui.test.cjs
       - run: python -m pytest --junitxml=tmp/test-results.xml
-      - run: python -m autotuner.quality coverage.json
-      - run: autotuner benchmark --profile qualification --output tmp/qualification.json
+      - run: python -m tuneio.quality coverage.json
+      - run: tuneio benchmark --profile qualification --output tmp/qualification.json
       - if: always()
-        run: autotuner benchmark --profile soak --duration-seconds 1800 --orders 50000 --requests 100 --output tmp/soak.json
+        run: tuneio benchmark --profile soak --duration-seconds 1800 --orders 50000 --requests 100 --output tmp/soak.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

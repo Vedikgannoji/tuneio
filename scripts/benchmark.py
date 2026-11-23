@@ -18,7 +18,7 @@ import httpx
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from autotuner.database import Database
+from tuneio.database import Database
 
 
 def seed(path, orders):
@@ -65,7 +65,7 @@ def run_round(db_path, mode, args):
         sock.bind(('127.0.0.1', 0))
         port = sock.getsockname()[1]
     env = dict(os.environ, AUTOTUNER_DB=str(db_path))
-    command = [sys.executable, '-m', 'uvicorn', 'autotuner.main:create_app', '--factory', '--host', '127.0.0.1',
+    command = [sys.executable, '-m', 'uvicorn', 'tuneio.main:create_app', '--factory', '--host', '127.0.0.1',
                '--port', str(port), '--log-level', 'error', '--no-access-log']
     process = subprocess.Popen(command, cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
                                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
@@ -101,7 +101,7 @@ def main():
     if min(args.orders, args.requests, args.concurrency, args.repeats) < 1:
         parser.error('All workload sizes must be positive')
     rounds = []
-    with tempfile.TemporaryDirectory(prefix='autotuner-bench-') as temp:
+    with tempfile.TemporaryDirectory(prefix='tuneio-bench-') as temp:
         db_path = Path(temp) / 'bench.sqlite3'
         seed(db_path, args.orders)
         for repeat in range(args.repeats):
@@ -115,8 +115,8 @@ def main():
     if len({r[mode]['response_sha256'] for r in rounds for mode in ('off', 'adaptive')}) != 1:
         raise RuntimeError('Baseline and adaptive response bodies differ')
     result = dict(timestamp_utc=time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-                  source_sha256={str(p.relative_to(ROOT / 'autotuner')).replace('\\', '/'): hashlib.sha256(p.read_bytes()).hexdigest()
-                                 for p in sorted((ROOT / 'autotuner').rglob('*.py'))},
+                  source_sha256={str(p.relative_to(ROOT / 'tuneio')).replace('\\', '/'): hashlib.sha256(p.read_bytes()).hexdigest()
+                                 for p in sorted((ROOT / 'tuneio').rglob('*.py'))},
                   environment=dict(python=platform.python_version(), os=platform.platform(),
                                    fastapi=__import__('fastapi').__version__, httpx=httpx.__version__,
                                    uvicorn=__import__('uvicorn').__version__),

@@ -4,7 +4,7 @@ from threading import Barrier, Event
 
 import pytest
 
-from autotuner.cache import AdaptiveCache, CacheConfig
+from tuneio.cache import AdaptiveCache, CacheConfig
 
 
 def test_independent_reads_and_off_mode_are_parallel():

@@ -11,7 +11,7 @@ python -m pip install -e ".[test]"
 python -m pytest
 ```
 
-Tests use isolated temporary SQLite databases and do not require a server. Coverage includes the complete `autotuner` Python package; no business modules are excluded. Statement and branch coverage are reported, and combined coverage below 90% fails the command. The GitHub Actions workflow runs the standard command on Python 3.12/Linux; that hosted CI job has not been run from this workspace.
+Tests use isolated temporary SQLite databases and do not require a server. Coverage includes the complete `tuneio` Python package; no business modules are excluded. Statement and branch coverage are reported, and combined coverage below 90% fails the command. The GitHub Actions workflow runs the standard command on Python 3.12/Linux; that hosted CI job has not been run from this workspace.
 
 The managed Windows execution sandbox blocks localhost socket connections (verified WinError 10013). Python 3.12 on Windows creates a TCP self-pipe when starting its normal event loop, which hangs under that restriction. For this environment only:
 
@@ -44,7 +44,7 @@ Create a new seeded database before the first server start:
 
 ```powershell
 python scripts/seed_demo.py --orders 50000
-python -m uvicorn autotuner.main:create_app --factory --host 127.0.0.1 --port 8000
+python -m uvicorn tuneio.main:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
 If a database already exists, choose a new path using `--db demo.sqlite3` and set `AUTOTUNER_DB` to the same path before starting. The seed command refuses to overwrite files.

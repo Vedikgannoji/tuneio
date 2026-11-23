@@ -7,11 +7,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from autotuner import cli, terminal
-from autotuner.artifacts import read_json, write_new
-from autotuner.comparison import compare
-from autotuner.monitor import Monitor, run
-from autotuner.terminal_ui import Keyboard, Theme, clip
+from tuneio import cli, terminal
+from tuneio.artifacts import read_json, write_new
+from tuneio.comparison import compare
+from tuneio.monitor import Monitor, run
+from tuneio.terminal_ui import Keyboard, Theme, clip
 
 
 def snapshot():
@@ -123,7 +123,7 @@ def test_theme_pixel_banner_and_ascii_fallback():
     palette.rich = True
     lines = palette.banner(75, 25)
     assert len(lines) == 5 and all('#' in line and '\x1b[38;2;' in line for line in lines)
-    assert 'AUTOTUNER' in palette.banner(30, 12)[0]
+    assert 'tuneio' in palette.banner(30, 12)[0]
 
 
 def test_menu_guided_setup_and_policy_revision(tmp_path):
@@ -167,7 +167,7 @@ def test_idle_menu_draws_once_and_restores_screen_on_interrupt(tmp_path, monkeyp
 
 
 def test_resource_units_and_wrapped_findings():
-    from autotuner.monitor import tab_rows
+    from tuneio.monitor import tab_rows
     data = snapshot()
     data['status']['storage'].update(disk_bytes=4096, last_error=None, persistent=True,
                                      transport={'completed_requests': 25})
@@ -218,7 +218,7 @@ def test_monitor_restores_on_interruption(monkeypatch, error, code):
 
 
 def test_windows_key_decoder(monkeypatch):
-    from autotuner import terminal_ui
+    from tuneio import terminal_ui
     if sys.platform != 'win32':
         pytest.skip('Windows console decoder')
     import msvcrt
@@ -320,11 +320,11 @@ def test_fullscreen_form_can_edit_input_and_return_to_menu(tmp_path, monkeypatch
     monkeypatch.setattr(terminal,'terminal_size',lambda:(90,24))
     assert workspace.loop() == 0
     assert workspace.config == tmp_path/'Ab.json'
-    assert 'AUTOTUNER / Select config' in out.getvalue()
+    assert 'tuneio / Select config' in out.getvalue()
 
 
 def test_fullscreen_baseline_uses_numbered_choices_and_keeps_path_fields(tmp_path, monkeypatch):
-    from autotuner.terminal_ui import Panel
+    from tuneio.terminal_ui import Panel
 
     out = io.StringIO()
     workspace = terminal.Workspace(tmp_path, tmp_path/'config.json', Mock(), io.StringIO(), out)
@@ -346,7 +346,7 @@ def test_fullscreen_baseline_uses_numbered_choices_and_keeps_path_fields(tmp_pat
 
 @pytest.mark.parametrize('key', ('back', 'enter', '2'))
 def test_fullscreen_approval_requires_an_explicit_yes(tmp_path, monkeypatch, key):
-    from autotuner.terminal_ui import Panel
+    from tuneio.terminal_ui import Panel
 
     workspace = terminal.Workspace(tmp_path, tmp_path/'config.json', Mock(), io.StringIO(), io.StringIO())
     workspace.theme.rich = True
@@ -358,7 +358,7 @@ def test_fullscreen_approval_requires_an_explicit_yes(tmp_path, monkeypatch, key
 
 
 def test_table_wrap_preserves_full_cell_at_narrow_width():
-    from autotuner.terminal_ui import Table, cell_width
+    from tuneio.terminal_ui import Table, cell_width
     table = Table(('Operation','P95 ms','Result'), [('GET /items/測試', '1.25', 'Approved for repeated public reads')])
     for width in (16, 40, 82):
         lines = list(table.lines(width))
@@ -368,8 +368,8 @@ def test_table_wrap_preserves_full_cell_at_narrow_width():
 
 
 def test_workspace_stops_only_its_owned_services(tmp_path, monkeypatch):
-    from autotuner import benchmarking
-    from autotuner.terminal_ui import Panel
+    from tuneio import benchmarking
+    from tuneio.terminal_ui import Panel
     proxy, restarted, demo = Mock(), Mock(), Mock()
     child = Mock(side_effect=[proxy,restarted,demo])
     monkeypatch.setattr(benchmarking, 'Child', child)
@@ -391,7 +391,7 @@ def test_workspace_stops_only_its_owned_services(tmp_path, monkeypatch):
 
 
 def test_saved_comparison_is_a_table_inside_the_workspace(tmp_path, monkeypatch):
-    from autotuner.terminal_ui import Panel, Table
+    from tuneio.terminal_ui import Panel, Table
 
     saved = tmp_path/'capture.json'
     write_new(saved, compare(matched('baseline'), matched('optimized')))
@@ -410,7 +410,7 @@ def test_saved_comparison_is_a_table_inside_the_workspace(tmp_path, monkeypatch)
 
 
 def test_workspace_proxy_binds_selected_listener(tmp_path, monkeypatch):
-    from autotuner import qualification_server
+    from tuneio import qualification_server
 
     config = tmp_path/'base.json'
     write_new(config, {'upstream':'http://127.0.0.1:3000', 'listen':'[::1]:8092'})

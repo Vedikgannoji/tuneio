@@ -1,6 +1,6 @@
 import sqlite3
 import pytest
-from autotuner.main import create_app
+from tuneio.main import create_app
 
 
 def seed(client):
@@ -101,7 +101,7 @@ def test_health_dashboard_exclusions(client, app):
     assert 'API Performance Monitor' in client.get('/').text
     asset = client.get('/assets/workflow.js')
     assert asset.status_code == 200
-    assert 'AutotunerWorkflow' in asset.text
+    assert 'tuneioWorkflow' in asset.text
     assert asset.headers['cache-control'] == 'no-store'
     assert client.get('/metrics').json()['summary']['count'] == 0
     assert client.get('/metrics?window=0').status_code == 422

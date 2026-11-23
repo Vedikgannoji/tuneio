@@ -4,10 +4,10 @@ import asyncio
 import httpx
 import pytest
 
-from autotuner import benchmarking as benchmark
-from autotuner.core.controller import AdaptiveController
-from autotuner.product_config import ProductConfig
-from autotuner.qualification_fixture import encode
+from tuneio import benchmarking as benchmark
+from tuneio.core.controller import AdaptiveController
+from tuneio.product_config import ProductConfig
+from tuneio.qualification_fixture import encode
 
 
 def test_client_setup_and_teardown_do_not_consume_pacing_or_workload_budget(monkeypatch):

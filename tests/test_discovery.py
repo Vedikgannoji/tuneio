@@ -6,9 +6,9 @@ from unittest.mock import Mock
 import httpx
 import pytest
 
-from autotuner import cli, discovery
-from autotuner.product_config import load_config
-from autotuner.session import ControlSession
+from tuneio import cli, discovery
+from tuneio.product_config import load_config
+from tuneio.session import ControlSession
 
 
 def schema(paths):

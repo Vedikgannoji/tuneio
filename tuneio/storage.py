@@ -188,7 +188,7 @@ class TelemetryStorage:
     async def start(self):
         ready = Future()
         ready.set_running_or_notify_cancel()
-        self.thread = Thread(target=self._run, args=(ready,), name='autotuner-telemetry', daemon=True)
+        self.thread = Thread(target=self._run, args=(ready,), name='tuneio-telemetry', daemon=True)
         self.thread.start()
         try:
             await asyncio.wrap_future(ready)
@@ -222,7 +222,7 @@ class TelemetryStorage:
             version = connection.execute('PRAGMA user_version').fetchone()[0]
             owned = connection.execute('PRAGMA application_id').fetchone()[0] == APPLICATION_ID
             if (version and not owned) or (version == 0 and connection.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchone()):
-                raise StorageUnavailable('Not an Autotuner telemetry database')
+                raise StorageUnavailable('Not a tuneio telemetry database')
             if version not in (0, SCHEMA_VERSION):
                 raise StorageUnavailable('Unsupported telemetry schema')
             pages = self.config.metrics.storage_max_bytes // 8192 - 4

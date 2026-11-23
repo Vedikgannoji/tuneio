@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from autotuner import benchmarking as b
+from tuneio import benchmarking as b
 
 
 def status(*,count=60,in_flight=0,hot_reads=0,keys=0):

@@ -2,8 +2,8 @@ import asyncio
 from itertools import count
 import httpx
 import pytest
-from autotuner.main import create_app
-from autotuner.cache import CacheConfig
+from tuneio.main import create_app
+from tuneio.cache import CacheConfig
 
 
 @pytest.fixture

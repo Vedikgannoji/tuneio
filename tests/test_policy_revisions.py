@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from autotuner import cli
-from autotuner.product_config import load_config
+from tuneio import cli
+from tuneio.product_config import load_config
 
 
 def test_review_lifecycle_preserves_parent_and_storage(tmp_path, capsys):

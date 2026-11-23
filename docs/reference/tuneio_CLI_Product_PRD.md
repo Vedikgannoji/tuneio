@@ -1,4 +1,4 @@
-# Autotuner CLI Product Requirements
+# tuneio CLI Product Requirements
 
 Version 2.0 | 15 November 2026 | Product owner Vedik
 
@@ -8,7 +8,7 @@ This is the current internal engineering contract for the terminal-first develop
 
 Build a lightweight, locally installed CLI that helps a developer discover supported project APIs, establish an explicit connection, analyze performance, approve suitable optimizations, monitor ongoing behavior, compare matched sessions and export evidence. Every essential operation must work through keyboard-operated terminal flows and scriptable commands. Browser use, a frontend server, Node.js and a hosted account are not runtime requirements.
 
-The current monitoring proxy and cache controller are reusable foundations. The original business API remains a demonstration fixture. Installing Autotuner in a project does not intercept traffic or authorize executing project code; integration must be visible and explicit.
+The current monitoring proxy and cache controller are reusable foundations. The original business API remains a demonstration fixture. Installing tuneio in a project does not intercept traffic or authorize executing project code; integration must be visible and explicit.
 
 ## Intended users and supported scope
 
@@ -23,7 +23,7 @@ The initial automatic integration is the existing single-worker loopback proxy. 
 ## Developer journey
 
 1. Install through a verified pip/venv, pipx or uv tool distribution.
-2. Enter a project directory and launch `autotuner` in a terminal.
+2. Enter a project directory and launch `tuneio` in a terminal.
 3. Review supported-project findings and select operations and connection setup.
 4. Observe real traffic or approve a bounded test workload with explicit data.
 5. Inspect baseline metrics and evidence-backed recommendations.
@@ -37,9 +37,9 @@ Steps are not implied by launching the tool. Discovery, startup, network connect
 
 ### Terminal interface
 
-CLI01: In a terminal with interactive stdin and stdout, bare `autotuner` opens the workspace. With either stream redirected, it prints help and exits without reading stdin. `autotuner menu` explicitly requests interactive entry; redirected streams or `--no-input` cause exit 2 unless `--json` is requested.
+CLI01: In a terminal with interactive stdin and stdout, bare `tuneio` opens the workspace. With either stream redirected, it prints help and exits without reading stdin. `tuneio menu` explicitly requests interactive entry; redirected streams or `--no-input` cause exit 2 unless `--json` is requested.
 
-CLI02: `autotuner menu --json` prints one schema-versioned JSON object describing available actions, effects, selected project/config paths and planned features. It never prompts, scans project files, opens a browser, connects to an API or changes configuration. Invalid input produces empty stdout, a sanitized stderr diagnostic and exit 2.
+CLI02: `tuneio menu --json` prints one schema-versioned JSON object describing available actions, effects, selected project/config paths and planned features. It never prompts, scans project files, opens a browser, connects to an API or changes configuration. Invalid input produces empty stdout, a sanitized stderr diagnostic and exit 2.
 
 CLI03: The foundation uses numbers/letters followed by Enter; b/0 returns, q exits and h/? opens help. Raw arrow-key navigation and a live terminal viewport are later monitoring work. EOF closes successfully; Ctrl+C at a menu prompt exits 130. Existing direct command shutdown behavior is preserved, including foreground serve returning cleanly after Ctrl+C.
 
@@ -162,7 +162,7 @@ Resolve licensing and distribution ownership before a public registry upload. Ve
 | Terminal foundation | Standard-library numbered/lettered menus with Enter; no UI dependency | Implemented for joint review |
 | First integration | Explicit single-worker local proxy | Retained; adapters require a separate contract |
 | License choice and grant | Vedik; pending owner choice, no license assigned | Before registry candidate publication |
-| Distribution name and publisher | Working name api-performance-auto-tuner; Vedik verifies registry ownership | Before TestPyPI/PyPI rehearsal |
+| Distribution name and publisher | `tuneio`. Vedik verifies registry ownership. | Before TestPyPI/PyPI rehearsal |
 | Reference host allocation | Vedik/release reviewer; not satisfied by local sandbox tests | Before performance qualification |
 | Concurrency controller | Reviewed design and tests required; current support is fixed configured bounds | Before optimization capability is enabled |
 | Version line | 2.1.0b1 terminal workflow candidate | Before the registry release |

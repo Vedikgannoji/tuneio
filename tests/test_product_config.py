@@ -3,7 +3,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from autotuner.product_config import ProductConfig, load_config
+from tuneio.product_config import ProductConfig, load_config
 
 
 def test_example_and_defaults():

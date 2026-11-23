@@ -5,10 +5,10 @@ from itertools import count
 
 import httpx
 
-from autotuner.benchmarking import config_for
-from autotuner.qualification_fixture import QualificationFixture,reference,seed
-from autotuner.session import ControlSession
-from autotuner.storage import connect_readonly,report as stored_report
+from tuneio.benchmarking import config_for
+from tuneio.qualification_fixture import QualificationFixture,reference,seed
+from tuneio.session import ControlSession
+from tuneio.storage import connect_readonly,report as stored_report
 
 
 def test_unique_key_pressure_mutation_faults_and_resource_recovery(tmp_path):

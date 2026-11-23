@@ -1,6 +1,6 @@
 import asyncio
 import pytest
-from autotuner.cache import AdaptiveCache, CacheConfig
+from tuneio.cache import AdaptiveCache, CacheConfig
 
 
 def test_policy_hysteresis_errors_and_recovery():

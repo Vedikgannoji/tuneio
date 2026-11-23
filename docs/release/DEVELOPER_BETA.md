@@ -9,12 +9,12 @@ Run from the checkout in a clean Python 3.11, 3.12 or 3.13 environment. The buil
 ```
 python -m pip install -e ".[test,benchmark,release]" pipx
 python -m pytest
-python -m autotuner.quality coverage.json
+python -m tuneio.quality coverage.json
 node --test tests/workflow.test.cjs tests/product_ui.test.cjs
 python -m build
 python -m twine check dist/*
 python scripts/smoke_wheel.py dist
-python scripts/smoke_installers.py dist/api_performance_auto_tuner-2.1.0b2-py3-none-any.whl
+python scripts/smoke_installers.py dist/tuneio-2.1.0b2-py3-none-any.whl
 ```
 
 Start with an empty dist directory or build into a new directory. The wheel smoke installs in a new venv and runs the CLI outside the source tree. Its real HTTP journey exercises both disposable upstreams, including read analysis, approval, warmup, comparison, invalidation, credential bypass, telemetry and rollback. The installer script covers pip, pipx and uv. Supply `--previous PATH_TO_REVIEWED_PREVIEW_WHEEL` to test upgrading from an earlier distribution. The hosted **Backend quality** workflow runs the nine OS/Python combinations and the **Prepare beta distributions** workflow exercises the installer checks.
@@ -24,10 +24,10 @@ Start with an empty dist directory or build into a new directory. The wheel smok
 Run the paired benchmark and soak against isolated fixtures on a reference host. The reference definition is four physical cores, at least 8 GiB RAM and Python 3.12. Record the actual host and confirm suitability before passing `--reference-host`.
 
 ```
-autotuner benchmark --profile qualification --reference-host --require-gates --output tmp/qualification.json
-autotuner benchmark --profile soak --duration-seconds 1800 --orders 50000 --requests 100 --require-gates --output tmp/soak.json
+tuneio benchmark --profile qualification --reference-host --require-gates --output tmp/qualification.json
+tuneio benchmark --profile soak --duration-seconds 1800 --orders 50000 --requests 100 --require-gates --output tmp/soak.json
 python scripts/measure_startup.py --samples 7
-autotuner release check --evidence docs/release/candidate.json --json
+tuneio release check --evidence docs/release/candidate.json --json
 ```
 
 A smoke test or in-process fixture run is separate evidence. Retain latency and resource results, raw startup trials, terminal refresh CPU, proxy CPU at the matched workload, and the full soak with clean shutdown. The pre-existing [qualification protocol](../product/PHASE_10_RELIABILITY_EVIDENCE.md) defines duration boundaries, cache accounting and acceptance thresholds.

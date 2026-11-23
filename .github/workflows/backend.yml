@@ -17,14 +17,14 @@ jobs:
         with:
           node-version: '22'
       - run: pip install -e ".[test,benchmark]"
-      - run: autotuner --version
+      - run: tuneio --version
       - run: node --test tests/workflow.test.cjs tests/product_ui.test.cjs
       - run: python -m pytest --junitxml=tmp/test-results.xml
-      - run: python -m autotuner.quality coverage.json
+      - run: python -m tuneio.quality coverage.json
       - run: python -m pip wheel . --no-deps --wheel-dir dist
       - run: python scripts/smoke_wheel.py dist
-      - run: autotuner benchmark --profile quick --requests 20 --orders 2000 --output tmp/qualification-quick.json
-      - run: autotuner benchmark --profile soak --duration-seconds 2 --requests 20 --orders 64 --output tmp/soak-smoke.json
+      - run: tuneio benchmark --profile quick --requests 20 --orders 2000 --output tmp/qualification-quick.json
+      - run: tuneio benchmark --profile soak --duration-seconds 2 --requests 20 --orders 64 --output tmp/soak-smoke.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

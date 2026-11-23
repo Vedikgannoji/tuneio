@@ -8,12 +8,12 @@ from time import perf_counter
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.benchmark import seed
-from autotuner.database import Database, REPORT_SQL
+from tuneio.database import Database, REPORT_SQL
 
 
 def main():
     result = {'scope': 'SQL query only; not HTTP or cache performance', 'orders': 50000, 'repeats': 7}
-    with tempfile.TemporaryDirectory(prefix='autotuner-sql-') as temp:
+    with tempfile.TemporaryDirectory(prefix='tuneio-sql-') as temp:
         path = Path(temp) / 'profile.sqlite3'
         seed(path, 50000)
         db = Database(path)

@@ -33,7 +33,7 @@ def main():
     process = None
     try:
         process = subprocess.Popen([
-            sys.executable, '-m', 'uvicorn', 'autotuner.main:create_app', '--factory',
+            sys.executable, '-m', 'uvicorn', 'tuneio.main:create_app', '--factory',
             '--host', '127.0.0.1', '--port', str(args.port),
         ], cwd=ROOT)
         # Ignore proxy environment settings for local readiness checks.
@@ -60,7 +60,7 @@ def main():
         print('Server did not become ready within 30 seconds.', file=sys.stderr)
         return 1
     except KeyboardInterrupt:
-        print('\nStopping Autotuner...')
+        print('\nStopping tuneio...')
         return 0
     finally:
         if process is not None and process.poll() is None:

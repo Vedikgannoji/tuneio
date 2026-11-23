@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request, Response
 import httpx
 import pytest
 
-from autotuner.core import AdaptiveCache, CacheConfig, Metrics, Monitoring, PerformanceEngine
+from tuneio.core import AdaptiveCache, CacheConfig, Metrics, Monitoring, PerformanceEngine
 
 
 @pytest.fixture(params=['fastapi_catalog', 'plain_asgi_inventory'])
@@ -89,7 +89,7 @@ def test_same_core_observes_and_caches_independent_backends(independent_backend)
 
 
 def test_core_imports_without_demo_or_web_framework():
-    script = "import sys; import autotuner.core; assert not {'fastapi','starlette','autotuner.main','autotuner.database','autotuner.schemas'} & set(sys.modules)"
+    script = "import sys; import tuneio.core; assert not {'fastapi','starlette','tuneio.main','tuneio.database','tuneio.schemas'} & set(sys.modules)"
     subprocess.run([sys.executable, '-c', script], check=True, cwd=Path(__file__).resolve().parents[1])
 
 

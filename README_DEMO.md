@@ -1,8 +1,8 @@
 # Self-Optimizing API Performance Monitoring System
 
-The installable CLI includes the product dashboard, declarative scenario runner and isolated reliability benchmarks. It runs beside the generic proxy, independently of the original demo below. Start your upstream, run `autotuner serve --config examples/adaptive-demo.json`, then open `autotuner dashboard --config examples/adaptive-demo.json` in another terminal. The product dashboard is at `http://127.0.0.1:8080/_autotuner/dashboard`; the proxy root continues forwarding to your upstream.
+The installable CLI includes the product dashboard, declarative scenario runner and isolated reliability benchmarks. It runs beside the generic proxy, independently of the original demo below. Start your upstream, run `tuneio serve --config examples/adaptive-demo.json`, then open `tuneio dashboard --config examples/adaptive-demo.json` in another terminal. The product dashboard is at `http://127.0.0.1:8080/_autotuner/dashboard`; the proxy root continues forwarding to your upstream.
 
-For isolated product benchmarks, install `python -m pip install -e ".[test,benchmark]"` and run `autotuner benchmark --profile quick --output product-quick.json`. It starts and stops its own temporary SQL upstream and proxy without targeting your application. Use `autotuner benchmark --help` for workload options. These checks alone do not establish completed performance qualification.
+For isolated product benchmarks, install `python -m pip install -e ".[test,benchmark]"` and run `tuneio benchmark --profile quick --output product-quick.json`. It starts and stops its own temporary SQL upstream and proxy without targeting your application. Use `tuneio benchmark --help` for workload options. These checks alone do not establish completed performance qualification.
 
 For generic proxy installation and complete startup commands, see the [product guide](README.md). Browser assets have no build step or Node dependency. Optional developer checks use `node --test tests/workflow.test.cjs tests/product_ui.test.cjs`. The demo below runs on port 8000; the proxy dashboard uses port 8080.
 
@@ -24,7 +24,7 @@ python -m venv .venv
 python -m pip install -e ".[test]"
 # Optional: create a NEW database with a realistic reporting workload before starting.
 python scripts/seed_demo.py --orders 50000
-python -m uvicorn autotuner.main:create_app --factory --host 127.0.0.1 --port 8000
+python -m uvicorn tuneio.main:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
 Linux/macOS: activate with `source .venv/bin/activate`. The seed command refuses to overwrite an existing database. Seeding is optional: without it the service creates an empty database and records can be created through the API.
@@ -89,7 +89,7 @@ python -m pytest
 python scripts/benchmark.py --orders 50000 --requests 120 --concurrency 8 --repeats 3
 ```
 
-Coverage includes every Python module in `autotuner`, with branch reporting and an enforced 90% combined coverage floor. The benchmark starts fresh single-worker HTTP servers, uses real SQL sales aggregation without artificial sleeps, alternates baseline/adaptive order, validates response hashes and status codes, and saves raw client timings plus cache decisions to `benchmarks/latest.json`. Adaptive rounds include cold policy learning. It exits unsuccessfully if the median mean-latency reduction is below 20%.
+Coverage includes every Python module in `tuneio`, with branch reporting and an enforced 90% combined coverage floor. The benchmark starts fresh single-worker HTTP servers, uses real SQL sales aggregation without artificial sleeps, alternates baseline/adaptive order, validates response hashes and status codes, and saves raw client timings plus cache decisions to `benchmarks/latest.json`. Adaptive rounds include cold policy learning. It exits unsuccessfully if the median mean-latency reduction is below 20%.
 
 **Evidence:** Earlier demo results and the retained user-run HTTP benchmark (73.54% median mean-latency reduction for its workload) predate the product proxy; they are not current product performance evidence. See [test guide](docs/TEST_GUIDE.md) for the historical demo boundary.
 
@@ -99,7 +99,7 @@ Coverage includes every Python module in `autotuner`, with branch reporting and 
 - Deploy with one worker. Metrics, cache, and policies are process-local and reset on restart; business data persists in SQLite.
 - This is a local backend engineering demonstration, without business-user authentication, tenant isolation, Redis, shared multi-worker metrics, or production deployment hardening. Add those before exposing private data or scaling to multiple workers.
 
-Source: `autotuner/`; tests: `tests/`; tools: `scripts/`; CI: `.github/workflows/backend.yml`. The original Node routes, dashboard and test scripts target the legacy server and are not the Python validation suite.
+Source: `tuneio/`; tests: `tests/`; tools: `scripts/`; CI: `.github/workflows/backend.yml`. The original Node routes, dashboard and test scripts target the legacy server and are not the Python validation suite.
 
 See [tuning review](docs/TUNING_REVIEW.md) for the bottleneck fixes, automatic feedback rules, and isolated SQL measurements. Rerun the HTTP benchmark after these changes; the previous 94.67% result belongs to the earlier implementation.
 
@@ -115,9 +115,9 @@ Cache expiry, cooldown, origin duration and queue measurements now use `perf_cou
 
 The installable CLI runs a configurable proxy alongside your API. Use the [product guide](README.md) for setup, commands and current limitations.
 
-- Inspect requests with `autotuner endpoints` and `autotuner insights`.
-- Export retained JSON/CSV with `autotuner report`; list history with `autotuner sessions`.
-- Review approved cache policies with `autotuner cache explain`.
+- Inspect requests with `tuneio endpoints` and `tuneio insights`.
+- Export retained JSON/CSV with `tuneio report`; list history with `tuneio sessions`.
+- Review approved cache policies with `tuneio cache explain`.
 - Use `examples/cache-demo.json` for fixed-TTL caching or `examples/adaptive-demo.json` for adaptive policies against the disposable demo upstream.
 
 The original demo sends no-store responses. Use the disposable upstream for generic proxy caching examples. Commands require the matching `--config` path; fast origins may correctly remain uncached.

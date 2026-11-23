@@ -4,8 +4,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from autotuner import cli
-from autotuner.product_config import ProductConfig
+from tuneio import cli
+from tuneio.product_config import ProductConfig
 
 
 @pytest.fixture

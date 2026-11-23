@@ -8,7 +8,7 @@ import sys
 from tempfile import TemporaryDirectory
 import venv
 
-PACKAGE = 'api-performance-auto-tuner'
+PACKAGE = 'tuneio'
 BIN = 'Scripts' if os.name == 'nt' else 'bin'
 SUFFIX = '.exe' if os.name == 'nt' else ''
 
@@ -26,19 +26,19 @@ def verify(root, installer, wheel, previous, offline):
 
     if installer == 'pip':
         venv.create(root/'venv', with_pip=True, system_site_packages=offline)
-        binary = root/'venv'/BIN/'autotuner'
+        binary = root/'venv'/BIN/'tuneio'
         runner = [str(binary.with_name('python'+SUFFIX)),'-m','pip']
         flags = ['--no-index','--no-deps'] if offline else []
         def install(path):
             run(*runner,'install','--upgrade',*flags,str(path))
         remove = [*runner,'uninstall','-y',PACKAGE]
     elif installer == 'uv':
-        binary = root/'uv-bin'/'autotuner'
+        binary = root/'uv-bin'/'tuneio'
         def install(path):
             run('uv','tool','install','--force','--no-python-downloads','--python',sys.executable,str(path))
         remove = ['uv','tool','uninstall',PACKAGE]
     else:
-        binary = root/'pipx-bin'/'autotuner'
+        binary = root/'pipx-bin'/'tuneio'
         runner = [sys.executable,'-m','pipx']
         def install(path):
             run(*runner,'install','--force','--python',sys.executable,str(path))
@@ -47,7 +47,7 @@ def verify(root, installer, wheel, previous, offline):
 
     def smoke(path, *, candidate):
         installed_version = path.name.split('-')[1]
-        assert run(str(entry),'--version') == 'autotuner '+installed_version
+        assert run(str(entry),'--version') == 'tuneio '+installed_version
         run(str(entry), *(['menu','--json'] if candidate else ['--help']))
         if not offline:
             run(str(entry),'init','--config',str(root/f'{installed_version}.json'),'--json')
@@ -74,6 +74,10 @@ def main():
     args = parser.parse_args()
     wheel = args.wheel.resolve(strict=True)
     previous = args.previous.resolve(strict=True) if args.previous is not None else None
+    prefix = PACKAGE.replace('-', '_') + '-'
+    if any(path.suffix != '.whl' or not path.name.startswith(prefix)
+           for path in (wheel, previous) if path is not None):
+        parser.error(f'Use {PACKAGE} wheels for both the candidate and any previous release')
     installers = args.installer or ['pip','pipx','uv']
     if args.offline_entrypoints and installers != ['pip']:
         parser.error('--offline-entrypoints requires --installer pip')
@@ -84,7 +88,7 @@ def main():
             parser.error('Install pipx in the runner environment or select another installer')
     scratch = Path('tmp').resolve()
     scratch.mkdir(exist_ok=True)
-    with TemporaryDirectory(prefix='autotuner-installer-smoke-',dir=scratch) as tmp:
+    with TemporaryDirectory(prefix='tuneio-installer-smoke-',dir=scratch) as tmp:
         for installer in installers:
             root = Path(tmp)/installer
             root.mkdir()

@@ -9,12 +9,12 @@ from unittest.mock import Mock, MagicMock
 import httpx
 import pytest
 
-from autotuner import cli
-from autotuner.console import timeseries
-from autotuner.core.metrics import Metrics
-from autotuner.product_config import ProductConfig
-from autotuner.scenarios import Scenario,Result
-from autotuner.session import ControlSession
+from tuneio import cli
+from tuneio.console import timeseries
+from tuneio.core.metrics import Metrics
+from tuneio.product_config import ProductConfig
+from tuneio.scenarios import Scenario,Result
+from tuneio.session import ControlSession
 
 
 def streaming(data=b'{}',headers=None):
@@ -92,7 +92,7 @@ def test_console_input_boundaries_and_errors(config,monkeypatch):
             session.console.body_readers=4
             assert (await client.post(url,json={'path':'/'})).status_code==503
             session.console.body_readers=0
-            import autotuner.console as console
+            import tuneio.console as console
             async def broken(*args):raise RuntimeError('secret')
             monkeypatch.setattr(console,'execute',broken)
             response=await client.post(url,json={'path':'/'})
@@ -154,7 +154,7 @@ def test_console_disconnected_input_and_shutdown_waits_for_current(config):
         async def disconnected():return {'type':'http.disconnect'}
         with pytest.raises(ValueError):await session.console.read_json({'headers':[(b'content-type',b'application/json')]},disconnected)
         async def idle():await asyncio.Event().wait()
-        import autotuner.console as console
+        import tuneio.console as console
         original=console.asyncio.wait_for
         async def timeout(coro,seconds):coro.close();raise asyncio.TimeoutError()
         console.asyncio.wait_for=timeout
@@ -249,7 +249,7 @@ def test_console_json_contract_with_real_javascript(config):
         return data
     data=asyncio.run(run())
     script="const ui=require(process.argv[1]);let s='';process.stdin.on('data',c=>s+=c);process.stdin.on('end',()=>{const data=JSON.parse(s);console.log(JSON.stringify({summary:ui.summary(data.metrics.summary),chart:ui.chartModel(data.series)}));});"
-    output=subprocess.run(['node','-e',script,str(Path('autotuner/product_ui.js').resolve())],input=json.dumps(data),text=True,capture_output=True,check=True,timeout=10)
+    output=subprocess.run(['node','-e',script,str(Path('tuneio/product_ui.js').resolve())],input=json.dumps(data),text=True,capture_output=True,check=True,timeout=10)
     result=json.loads(output.stdout)
     assert result['summary']['total']=='1' and len(result['chart'])==20
     assert sum(x['count'] for x in result['chart'])==1

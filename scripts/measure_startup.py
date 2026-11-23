@@ -17,8 +17,8 @@ def main():
     if not 5 <= args.samples <= 30:
         parser.error('Use 5–30 samples per command.')
     results = {}
-    with TemporaryDirectory(prefix='autotuner-startup-') as project:
-        prefix = [sys.executable, '-I', '-m', 'autotuner']
+    with TemporaryDirectory(prefix='tuneio-startup-') as project:
+        prefix = [sys.executable, '-I', '-m', 'tuneio']
         tool = subprocess.check_output([*prefix,'--version'],cwd=project,text=True,timeout=15).strip()
         for command in (('--help',), ('--version',), ('menu','--json')):
             readings = []

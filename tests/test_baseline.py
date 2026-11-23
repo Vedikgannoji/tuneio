@@ -5,10 +5,10 @@ from unittest.mock import Mock
 import httpx
 import pytest
 
-from autotuner import baseline, cli
-from autotuner.product_config import ProductConfig
-from autotuner.session import ControlSession
-from autotuner.storage import config_identity
+from tuneio import baseline, cli
+from tuneio.product_config import ProductConfig
+from tuneio.session import ControlSession
+from tuneio.storage import config_identity
 
 
 @pytest.fixture

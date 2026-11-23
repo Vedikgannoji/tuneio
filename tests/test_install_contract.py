@@ -23,7 +23,7 @@ def test_clean_install_coordinator_uses_own_venv_and_isolated_imports(tmp_path,m
         assert Path(call.args[0][0]).is_relative_to(call.kwargs['cwd'])
     assert run.call_args_list[0].args[0][1:]==['-m','pip','install',str(wheel)]
     assert all(call.args[0][1]=='-I' for call in run.call_args_list[1:])
-    assert run.call_args_list[2].args[0][1:5]==['-I','-m','autotuner','menu']
+    assert run.call_args_list[2].args[0][1:5]==['-I','-m','tuneio','menu']
 
 
 def test_local_only_check_distinguishes_system_dependencies_and_no_network(tmp_path,monkeypatch):

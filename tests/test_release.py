@@ -5,8 +5,8 @@ from unittest.mock import Mock
 import httpx
 import pytest
 
-from autotuner import __version__, cli, release
-from autotuner.demo import DemoAPI
+from tuneio import __version__, cli, release
+from tuneio.demo import DemoAPI
 
 
 @pytest.fixture

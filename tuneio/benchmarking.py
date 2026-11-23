@@ -101,7 +101,7 @@ class Child:
     """Only owned subprocesses, OS-assigned ports, stdin-driven graceful shutdown."""
     def __init__(self,kind,path,*,factory=subprocess.Popen,start_timeout=30,port=0):
         self.graceful=False
-        self.process=factory([sys.executable,'-m','autotuner.qualification_server','--kind',kind,'--path',str(path),'--port',str(port)],
+        self.process=factory([sys.executable,'-m','tuneio.qualification_server','--kind',kind,'--path',str(path),'--port',str(port)],
             stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,encoding='utf-8',
             creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         ready=Queue(maxsize=1)
@@ -333,7 +333,7 @@ def run(options,*,progress=lambda message:None,child_factory=Child,measure_fn=me
         listener_override='Private server uses an OS-assigned loopback port; config.listen is not bound',
         limitations=['No general API speedup claim','Hosted CI and 30-minute stability require separate evidence'])
     if options.profile=='soak':return run_soak(options,report,progress=progress,child_factory=child_factory)
-    with tempfile.TemporaryDirectory(prefix='autotuner-qualification-') as temp:
+    with tempfile.TemporaryDirectory(prefix='tuneio-qualification-') as temp:
         root=Path(temp)
         for repeat in range(options.repeats):
             for workload in WORKLOADS:
@@ -383,7 +383,7 @@ def run_soak(options,report,*,progress,child_factory):
         return dict(elapsed_seconds=perf_counter()-started,requests=total,unexpected_failures=unexpected,http_errors=expected_errors,
                     checkpoints=list(checkpoints),checkpoint_count=checkpoint_count,checkpoints_truncated=checkpoint_count>len(checkpoints),
                     persisted_sampling=persisted['sampling'])
-    with tempfile.TemporaryDirectory(prefix='autotuner-soak-') as temp:
+    with tempfile.TemporaryDirectory(prefix='tuneio-soak-') as temp:
         root=Path(temp);database=root/'fixture.sqlite3';seed(database,options.orders)
         origin=proxy=None
         try:

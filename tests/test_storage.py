@@ -12,11 +12,11 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from autotuner import cli
-from autotuner.product_config import ProductConfig
-from autotuner.reporting import serialize_report
-from autotuner.session import ControlSession
-from autotuner.storage import TelemetryStorage, StorageUnavailable, config_identity, connect_readonly, history, report
+from tuneio import cli
+from tuneio.product_config import ProductConfig
+from tuneio.reporting import serialize_report
+from tuneio.session import ControlSession
+from tuneio.storage import TelemetryStorage, StorageUnavailable, config_identity, connect_readonly, history, report
 
 
 class Bytes(httpx.AsyncByteStream):
@@ -106,7 +106,7 @@ def test_queue_overflow_and_cancelled_export_are_visible(config, monkeypatch):
 
 
 def test_retention_and_session_cap(config, monkeypatch):
-    import autotuner.storage as module
+    import tuneio.storage as module
     monkeypatch.setattr(module,'MAX_SESSIONS',3)
     clock=[1_800_000_000.]
     async def scenario():

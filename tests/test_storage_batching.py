@@ -4,8 +4,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from autotuner.product_config import ProductConfig
-from autotuner.storage import collect_events,TelemetryStorage,BATCH_LIMIT
+from tuneio.product_config import ProductConfig
+from tuneio.storage import collect_events,TelemetryStorage,BATCH_LIMIT
 
 
 def test_export_is_a_fifo_barrier_and_preserves_following_events():

@@ -21,7 +21,7 @@ def main():
     wheelhouse = args.wheelhouse.resolve(strict=True) if args.wheelhouse else None
     scratch = Path('tmp').resolve()
     scratch.mkdir(exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix='autotuner-clean-install-', dir=scratch) as temporary:
+    with tempfile.TemporaryDirectory(prefix='tuneio-clean-install-', dir=scratch) as temporary:
         root=Path(temporary);venv.create(root/'venv',with_pip=True,system_site_packages=args.local_only)
         python=root/'venv'/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
         def run(*arguments):subprocess.run([str(python),*arguments],cwd=root,check=True,timeout=180)
@@ -29,15 +29,15 @@ def main():
         if args.local_only:
             pip_flags += ['--no-deps']
         run('-m','pip','install',*pip_flags,str(wheel))
-        run('-I','-m','autotuner','--version')
-        run('-I','-m','autotuner','menu','--project',str(root),'--json')
-        run('-I','-m','autotuner','init','--config',str(root/'config.json'),'--json')
-        run('-I','-m','autotuner','serve','--config',str(root/'config.json'),'--check','--json')
-        run('-I','-m','autotuner','benchmark','--help')
+        run('-I','-m','tuneio','--version')
+        run('-I','-m','tuneio','menu','--project',str(root),'--json')
+        run('-I','-m','tuneio','init','--config',str(root/'config.json'),'--json')
+        run('-I','-m','tuneio','serve','--config',str(root/'config.json'),'--check','--json')
+        run('-I','-m','tuneio','benchmark','--help')
         for command in ('baseline','optimize','monitor','compare'):
-            run('-I','-m','autotuner',command,'--help')
-        run('-I','-c',"from importlib.resources import files; import autotuner; print(autotuner.__file__); "
-            "assert all(files('autotuner').joinpath(p).is_file() for p in ('product_dashboard.html','product.css','product_ui.js','scenario_presets.json','benchmarking.py','qualification_server.py'))")
+            run('-I','-m','tuneio',command,'--help')
+        run('-I','-c',"from importlib.resources import files; import tuneio; print(tuneio.__file__); "
+            "assert all(files('tuneio').joinpath(p).is_file() for p in ('product_dashboard.html','product.css','product_ui.js','scenario_presets.json','benchmarking.py','qualification_server.py'))")
         if not args.local_only:
             run('-I',str(Path(__file__).with_name('smoke_product.py').resolve()))
 

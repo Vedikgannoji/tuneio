@@ -1,5 +1,5 @@
 """Compatibility entry point for the packaged disposable RAM demo."""
-from autotuner.demo import DemoAPI as CacheUpstream
+from tuneio.demo import DemoAPI as CacheUpstream
 
 if __name__=='__main__':
     import uvicorn

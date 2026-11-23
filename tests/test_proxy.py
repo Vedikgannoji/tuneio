@@ -5,9 +5,9 @@ import json
 import httpx
 import pytest
 
-from autotuner.product_config import ProductConfig
-from autotuner.session import ControlSession
-from autotuner.proxy import IncompleteResponse
+from tuneio.product_config import ProductConfig
+from tuneio.session import ControlSession
+from tuneio.proxy import IncompleteResponse
 
 
 class Chunks(httpx.AsyncByteStream):

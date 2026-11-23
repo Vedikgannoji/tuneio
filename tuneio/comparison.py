@@ -94,7 +94,7 @@ def display_comparison(result):
     if not result['comparable']:
         return 'Captures are incomparable\n' + '\n'.join('  '+reason.replace('_',' ') for reason in result['reasons'])
     baseline, optimized = result['baseline'], result['optimized']
-    lines = ['AUTOTUNER / MATCHED READ COMPARISON',
+    lines = ['tuneio / MATCHED READ COMPARISON',
              f"{'Latency':<9} {'Baseline':>12} {'Optimized':>12} {'Reduction':>12}"]
     for label in ('mean','p50','p95','p99'):
         key = label+'_ms'

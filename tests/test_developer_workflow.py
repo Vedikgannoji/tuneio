@@ -5,11 +5,11 @@ import json
 import httpx
 import pytest
 
-from autotuner import cli, proxy
-from autotuner.demo import DemoAPI
-from autotuner.product_config import load_config
-from autotuner.qualification_fixture import QualificationFixture, seed
-from autotuner.session import ControlSession
+from tuneio import cli, proxy
+from tuneio.demo import DemoAPI
+from tuneio.product_config import load_config
+from tuneio.qualification_fixture import QualificationFixture, seed
+from tuneio.session import ControlSession
 
 
 @pytest.mark.parametrize('fixture', ['ram','sqlite'])

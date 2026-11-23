@@ -192,7 +192,7 @@ class Workspace:
         self.say('b goes back. q or Ctrl+C exits.')
         self.say('Entry is offline. Session actions query the proxy running with the selected config.')
         self.say('Use Setup and configuration to start the proxy. The workspace stops its own services on exit.')
-        self.say('The proxy routes traffic to your upstream; installing Autotuner alone does not connect your API.')
+        self.say('The proxy routes traffic to your upstream; installing tuneio alone does not connect your API.')
         self.say('Fast origins can correctly remain uncached. Cache rules and invalidation need explicit configuration.')
         self.say('Monitor shows live traffic and tuning. Use Reports to compare two matched read captures.')
 
@@ -242,7 +242,7 @@ class Workspace:
         kind = data.get('kind')
         if data.get('schema_version') != 1 or (kind != 'matched-read-comparison' and
                 (kind not in ('active','passive') or 'baseline_id' not in data)):
-            self.say('Select a capture or comparison saved by Autotuner.')
+            self.say('Select a capture or comparison saved by tuneio.')
             return
         try:
             lines = list(report_view('compare', data) if kind == 'matched-read-comparison' else capture_view(data))
@@ -584,7 +584,7 @@ class Workspace:
     def navigate(self):
         group=None
         if not self.theme.rich:
-            self.say('Autotuner '+__version__+' | Terminal workspace')
+            self.say('tuneio '+__version__+' | Terminal workspace')
             self.say('No project scanning, API traffic or configuration changes occur on entry.')
         while True:
             if not self.theme.rich:
@@ -656,7 +656,7 @@ def run(*,invoke,project='.',config=None,as_json=False,no_input=False,plain=Fals
         if as_json:
             print(json.dumps(manifest(root,path),indent=2),file=stdout);return 0
         if no_input or not (stdin.isatty() and stdout.isatty()):
-            print('Interactive menu requires terminal input and output. Use autotuner menu --json or autotuner --help.',file=stderr)
+            print('Interactive menu requires terminal input and output. Use tuneio menu --json or tuneio --help.',file=stderr)
             return 2
         return Workspace(root,path,invoke,stdin,stdout,plain).loop()
     except EOFError:

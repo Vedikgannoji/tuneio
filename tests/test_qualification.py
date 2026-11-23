@@ -12,9 +12,9 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from autotuner import benchmarking as b,cli,quality
-from autotuner.qualification_fixture import QualificationFixture,seed,reference,encode
-from autotuner.session import ControlSession
+from tuneio import benchmarking as b,cli,quality
+from tuneio.qualification_fixture import QualificationFixture,seed,reference,encode
+from tuneio.session import ControlSession
 
 
 @pytest.mark.parametrize('values',[{'requests':19},{'requests':True},{'concurrency':0},{'concurrency':65},
@@ -223,14 +223,14 @@ def test_environment_rss_optional_and_permission_failure(monkeypatch):
 
 
 def test_core_statement_and_branch_gates_are_independent(tmp_path,capsys):
-    data={'files':{'autotuner\\core\\cache.py':{'summary':dict(num_statements=100,covered_lines=100,num_branches=100,covered_branches=89)}}}
+    data={'files':{'tuneio\\core\\cache.py':{'summary':dict(num_statements=100,covered_lines=100,num_branches=100,covered_branches=89)}}}
     assert not quality.check(data)['passed']
-    data['files']['autotuner\\core\\cache.py']['summary'].update(covered_lines=89,covered_branches=100)
+    data['files']['tuneio\\core\\cache.py']['summary'].update(covered_lines=89,covered_branches=100)
     assert not quality.check(data)['passed']
-    data['files']['autotuner\\core\\cache.py']['summary']['covered_lines']=100
+    data['files']['tuneio\\core\\cache.py']['summary']['covered_lines']=100
     assert quality.check(data)['passed']
     file=tmp_path/'coverage.json';file.write_text(json.dumps(data));assert quality.main([str(file)])==0
-    data['files']['autotuner\\core\\cache.py']['summary']['covered_lines']=0
+    data['files']['tuneio\\core\\cache.py']['summary']['covered_lines']=0
     file.write_text(json.dumps(data));assert quality.main([str(file)])==3
     file.write_text('{}');assert quality.main([str(file)])==2
     with pytest.raises(ValueError):quality.check(data,101)
@@ -291,7 +291,7 @@ def test_soak_orchestration_checkpoints_limits_and_qualification_states(tmp_path
 
 def test_qualification_server_announces_bound_port_and_stops_on_stdin(tmp_path,monkeypatch,capsys):
     import uvicorn
-    from autotuner import qualification_server as server
+    from tuneio import qualification_server as server
     path=tmp_path/'fixture.sqlite3';seed(path,8)
     async def startup(self,sockets=None):
         self.started=True;self.servers=[SimpleNamespace(sockets=[SimpleNamespace(getsockname=lambda:('127.0.0.1',4567))])]

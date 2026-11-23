@@ -37,7 +37,7 @@ def control_open(opener, request, listen, timeout):
     except urllib.error.URLError as exc:
         if isinstance(exc.reason,TimeoutError):
             raise ControlError('Local proxy request timed out; inspect the proxy terminal.') from None
-        raise ControlError(f'Cannot reach the local proxy at {listen}. Start autotuner serve with the same config in a separate terminal and leave it running.') from None
+        raise ControlError(f'Cannot reach the local proxy at {listen}. Start tuneio serve with the same config in a separate terminal and leave it running.') from None
     except TimeoutError:
         raise ControlError('Local proxy request timed out; inspect the proxy terminal.') from None
     except ConnectionError:
@@ -50,8 +50,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def parser():
-    root = argparse.ArgumentParser(prog='autotuner', description='Local API proxy with opt-in static and adaptive caching; observe by default.')
-    root.add_argument('--version', action='version', version='autotuner ' + VERSION)
+    root = argparse.ArgumentParser(prog='tuneio', description='Local API proxy with opt-in static and adaptive caching; observe by default.')
+    root.add_argument('--version', action='version', version='tuneio ' + VERSION)
     root.add_argument('--no-input',action='store_true',help='Disable interactive prompts')
     commands = root.add_subparsers(dest='command')
     menu=commands.add_parser('menu',help='Open the keyboard-operated terminal workspace')
@@ -192,7 +192,7 @@ def resolved_config(args):
     except FileNotFoundError:
         raise MissingConfiguration(
             f'Configuration file not found: {str(path)!r}. '
-            'Create it with autotuner init or select an existing file with --config. '
+            'Create it with tuneio init or select an existing file with --config. '
             'In the menu, use Setup > Create observe configuration or c to select a config.'
         ) from None
     data = dict(data)
@@ -287,7 +287,7 @@ def main(argv=None):
                     result['written'] = True
                 emit(result, args.json)
                 if result['written'] and not args.json:
-                    print('Start your API separately, then run autotuner serve --config with the saved file.')
+                    print('Start your API separately, then run tuneio serve --config with the saved file.')
                 return 0
             except FileExistsError:
                 print('Configuration already exists. Choose a new --output filename.', file=sys.stderr)
@@ -544,7 +544,7 @@ def main(argv=None):
             logging.basicConfig(level=logging.INFO, stream=sys.stderr)
             logging.getLogger('httpx').setLevel(logging.WARNING)
             logging.getLogger('httpcore').setLevel(logging.WARNING)
-            print('Open the terminal monitor with autotuner monitor using this configuration.',file=sys.stderr)
+            print('Open the terminal monitor with tuneio monitor using this configuration.',file=sys.stderr)
             uvicorn.run(ControlSession(config), host=host.strip('[]'), port=int(port),
                         log_config=None, access_log=False, server_header=False, date_header=False, timeout_graceful_shutdown=args.shutdown_timeout)
         return 0

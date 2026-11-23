@@ -9,11 +9,11 @@ from unittest.mock import Mock
 import httpx
 import pytest
 
-from autotuner import cli
-from autotuner.product_config import ProductConfig
-from autotuner.response_cache import ResponseCache, freshness, representation_key
-from autotuner.session import ControlSession
-from autotuner.proxy import IncompleteResponse
+from tuneio import cli
+from tuneio.product_config import ProductConfig
+from tuneio.response_cache import ResponseCache, freshness, representation_key
+from tuneio.session import ControlSession
+from tuneio.proxy import IncompleteResponse
 
 WALL=1_800_000_000
 

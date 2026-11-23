@@ -9,7 +9,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from autotuner import cli,terminal
+from tuneio import cli,terminal
 
 
 class TTY(io.StringIO):
@@ -213,9 +213,9 @@ def test_project_display_cannot_inject_terminal_controls():
 @pytest.mark.parametrize('arguments',[['--help'],['--version'],['--no-input'],['menu','--json']])
 def test_light_entrypoints_do_not_import_runtime_stack(tmp_path,arguments):
     root=str(Path(__file__).resolve().parents[1])
-    code='import sys; sys.path.insert(0,'+repr(root)+'); from autotuner import cli; '\
+    code='import sys; sys.path.insert(0,'+repr(root)+'); from tuneio import cli; '\
          +'\ntry: cli.main('+repr(arguments)+')'\
          +'\nexcept SystemExit as exc: assert exc.code==0\n'
-    code+='assert not any(n in sys.modules for n in ("httpx","uvicorn","fastapi","pydantic","sqlite3","autotuner.session"))'
+    code+='assert not any(n in sys.modules for n in ("httpx","uvicorn","fastapi","pydantic","sqlite3","tuneio.session"))'
     result=subprocess.run([sys.executable,'-I','-c',code],cwd=tmp_path,capture_output=True,text=True,timeout=15)
     assert result.returncode==0,result.stderr

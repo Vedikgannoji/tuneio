@@ -1,6 +1,6 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const ui=require('../autotuner/product_ui.js');
+const ui=require('../tuneio/product_ui.js');
 
 test('deep links and legacy aliases resolve to a single real view',()=>{
   for(const [hash,view] of [['#cache','cache'],['#policies','cache'],['#playground','playground'],['#tester','playground'],['#guide','guide'],['#unknown','overview']])assert.equal(ui.route(hash),view);
@@ -34,7 +34,7 @@ test('click/hash/back-forward updates visibility and the active navigation toget
 });
 test('theme toggles persist only preference; loading does not generate data-plane traffic',()=>{
   const s=surface('#playground','light');assert.equal(s.context.document.documentElement.dataset.theme,'light');
-  s.get('theme').onclick();assert.equal(s.storage.get('autotuner-theme'),'dark');
+  s.get('theme').onclick();assert.equal(s.storage.get('tuneio-theme'),'dark');
   assert.equal(s.calls.length,1);assert.match(s.calls[0].url,/dashboard\/data/);assert.equal(s.calls[0].options.credentials,'omit');
 });
 test('keyboard skip link focuses the current view without resetting its route',()=>{

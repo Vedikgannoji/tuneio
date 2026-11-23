@@ -7,9 +7,9 @@ from unittest.mock import Mock
 import httpx
 import pytest
 
-from autotuner import cli
-from autotuner.product_config import ProductConfig
-from autotuner.session import ControlSession
+from tuneio import cli
+from tuneio.product_config import ProductConfig
+from tuneio.session import ControlSession
 
 
 @pytest.fixture
@@ -102,8 +102,8 @@ def test_help_version_and_entrypoint(config, monkeypatch, capsys):
         with pytest.raises(SystemExit) as exc:
             cli.main(args)
         assert exc.value.code == 0
-    assert 'autotuner '+cli.VERSION in capsys.readouterr().out
-    monkeypatch.setattr(sys, 'argv', ['autotuner', 'doctor'])
+    assert 'tuneio '+cli.VERSION in capsys.readouterr().out
+    monkeypatch.setattr(sys, 'argv', ['tuneio', 'doctor'])
     with pytest.raises(SystemExit) as exc:
         cli.entrypoint()
     assert exc.value.code == 0
@@ -111,11 +111,11 @@ def test_help_version_and_entrypoint(config, monkeypatch, capsys):
 
 def test_module_entrypoint_and_redirect_policy(monkeypatch, capsys):
     import runpy
-    monkeypatch.setattr(sys, 'argv', ['autotuner', '--version'])
+    monkeypatch.setattr(sys, 'argv', ['tuneio', '--version'])
     with pytest.raises(SystemExit) as exc:
-        runpy.run_module('autotuner', run_name='__main__')
+        runpy.run_module('tuneio', run_name='__main__')
     assert exc.value.code == 0
-    assert 'autotuner '+cli.VERSION in capsys.readouterr().out
+    assert 'tuneio '+cli.VERSION in capsys.readouterr().out
     assert cli.NoRedirect().redirect_request(None, None, 302, '', {}, 'http://example.com') is None
 
 

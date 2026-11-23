@@ -1,6 +1,6 @@
-# API Performance Auto Tuner development instructions
+# tuneio development instructions
 
-This repository is evolving from a FastAPI demo into an installable API monitoring and adaptive caching product. The current terminal-first product contract is `docs/reference/Autotuner_CLI_Product_PRD.md`; it supersedes the historical Word draft `docs/reference/Autotuner_Technical_PRD.docx`. Internal phase contracts are in `docs/product/`.
+This repository is evolving from a FastAPI demo into an installable API monitoring and adaptive caching product. The current terminal-first product contract is `docs/reference/tuneio_CLI_Product_PRD.md`. It supersedes the historical Word draft `docs/reference/Autotuner_Technical_PRD.docx`. Internal phase contracts are in `docs/product/`.
 
 ## Phase development and testing
 

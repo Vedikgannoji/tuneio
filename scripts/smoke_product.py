@@ -9,9 +9,9 @@ from tempfile import TemporaryDirectory
 
 import httpx
 
-from autotuner.artifacts import write_new
-from autotuner.benchmarking import Child
-from autotuner.qualification_fixture import seed
+from tuneio.artifacts import write_new
+from tuneio.benchmarking import Child
+from tuneio.qualification_fixture import seed
 
 
 @contextmanager
@@ -32,7 +32,7 @@ def free_port():
 
 def verify(root, fixture, route, method, mutation, payload):
     def run(*args):
-        command = [sys.executable, '-I', '-m', 'autotuner', '--no-input', *map(str, args), '--json']
+        command = [sys.executable, '-I', '-m', 'tuneio', '--no-input', *map(str, args), '--json']
         result = subprocess.run(command, cwd=root, capture_output=True, text=True, encoding='utf-8', timeout=120)
         if result.returncode:
             raise RuntimeError(result.stderr or result.stdout)
@@ -85,7 +85,7 @@ def verify(root, fixture, route, method, mutation, payload):
 
 
 if __name__ == '__main__':
-    with TemporaryDirectory(prefix='autotuner-product-smoke-', dir=Path.cwd()) as tmp:
+    with TemporaryDirectory(prefix='tuneio-product-smoke-', dir=Path.cwd()) as tmp:
         root = Path(tmp)
         for name, path, method, mutation, body in (
                 ('demo','/api/products','PATCH','/api/products/1',{'price_cents':7300}),

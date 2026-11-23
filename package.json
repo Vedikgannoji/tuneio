@@ -1,7 +1,7 @@
 {
-  "name": "api-performance-autotuner",
+  "name": "tuneio",
   "version": "1.0.0",
-  "description": "API Performance Autotuner - A scalable Express.js backend",
+  "description": "tuneio - A scalable Express.js backend",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -11,7 +11,7 @@
     "express",
     "api",
     "performance",
-    "autotuner"
+    "tuneio"
   ],
   "author": "",
   "license": "ISC",

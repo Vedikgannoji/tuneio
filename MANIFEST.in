@@ -1,7 +1,7 @@
 include README.md README_DEMO.md CHANGELOG.md CONTRIBUTING.md SECURITY.md
 include docs/TERMINAL_GUIDE.md
-include docs/reference/Autotuner_CLI_Product_PRD.md
-recursive-include autotuner *.py *.html *.css *.js *.json
+include docs/reference/tuneio_CLI_Product_PRD.md
+recursive-include tuneio *.py *.html *.css *.js *.json
 recursive-include examples *.py *.json
 recursive-include scripts *.py
 recursive-include tests *.py *.cjs

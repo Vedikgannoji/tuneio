@@ -1,4 +1,4 @@
-from autotuner import __version__
+from tuneio import __version__
 import asyncio
 from contextlib import nullcontext
 import io
@@ -9,11 +9,11 @@ from unittest.mock import Mock
 import httpx
 import pytest
 
-from autotuner import cli
-from autotuner.core import Metrics
-from autotuner.core.insights import analyze
-from autotuner.product_config import ProductConfig
-from autotuner.session import ControlSession
+from tuneio import cli
+from tuneio.core import Metrics
+from tuneio.core.insights import analyze
+from tuneio.product_config import ProductConfig
+from tuneio.session import ControlSession
 
 
 @pytest.fixture
@@ -241,7 +241,7 @@ def test_insights_cli_validates_response_and_window(config,tmp_path,monkeypatch,
 
 
 def test_timeout_does_not_count_queue_wait_twice(config,monkeypatch):
-    import autotuner.proxy as module
+    import tuneio.proxy as module
     clock=[10.]
     monkeypatch.setattr(module,'perf_counter',lambda:clock[0])
     def upstream(req):raise httpx.ReadTimeout('private failure')

@@ -7,10 +7,10 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from autotuner.scenarios import (Scenario, RequestSpec, ScenarioRunner, ScenarioBusy,
+from tuneio.scenarios import (Scenario, RequestSpec, ScenarioRunner, ScenarioBusy,
     Result, execute, load_scenario, path_check, select, resolve, MAX_RESPONSE)
-from autotuner.product_config import ProductConfig
-from autotuner.session import ControlSession
+from tuneio.product_config import ProductConfig
+from tuneio.session import ControlSession
 
 
 def plan(**overrides):

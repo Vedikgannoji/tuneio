@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Performance Testing Script for API Performance Autotuner
+# Performance Testing Script for TuneIO
 # This script generates traffic and displays performance metrics
 
-echo "🚀 API Performance Autotuner - Testing Script"
+echo "🚀 TuneIO - Testing Script"
 echo "=============================================="
 echo ""
 

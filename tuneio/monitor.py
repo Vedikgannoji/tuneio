@@ -129,7 +129,7 @@ class Monitor:
             text += ' / PARTIAL WINDOW'
         if age is not None:
             text += f' · {age:.1f}s ago'
-        header = [draw('title', f'AUTOTUNER / LIVE MONITOR   {self.window}s window'),
+        header = [draw('title', f'tuneio / LIVE MONITOR   {self.window}s window'),
                   draw('warn' if self.error or stale or self.paused else 'ok', text)]
         footer = draw('muted', 'Tab tabs  j/k scroll  / filter  Space pause  r refresh  i interval  q exit')
         if height < 8 or width < 26:
@@ -207,7 +207,7 @@ class Monitor:
                 return
             if key == '/':
                 if self.theme.rich:
-                    self.theme.screen([self.theme.paint('title', 'AUTOTUNER / FILTER'), ''])
+                    self.theme.screen([self.theme.paint('title', 'tuneio / FILTER'), ''])
                     displayed = None
                 label = ('Operation', 'Rule', 'Operation', 'Resource')[self.tab]
                 stdout.write(f'{label} filter (blank clears): ')

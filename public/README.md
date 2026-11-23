@@ -1,4 +1,4 @@
-# API Performance Autotuner Dashboard
+# tuneio Dashboard
 
 A clean, modern web dashboard for visualizing API performance metrics and insights.
 

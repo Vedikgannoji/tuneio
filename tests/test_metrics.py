@@ -1,5 +1,5 @@
 import pytest
-from autotuner.metrics import Metrics, percentile
+from tuneio.metrics import Metrics, percentile
 
 
 def test_exact_aggregates_and_windows():

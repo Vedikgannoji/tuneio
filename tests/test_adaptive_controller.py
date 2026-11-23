@@ -9,11 +9,11 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from autotuner.core.controller import AdaptiveController
-from autotuner.product_config import ProductConfig
-from autotuner.response_cache import ResponseCache
-from autotuner.session import ControlSession
-from autotuner.storage import TelemetryStorage,connect_readonly,report,config_identity
+from tuneio.core.controller import AdaptiveController
+from tuneio.product_config import ProductConfig
+from tuneio.response_cache import ResponseCache
+from tuneio.session import ControlSession
+from tuneio.storage import TelemetryStorage,connect_readonly,report,config_identity
 
 
 @pytest.fixture
@@ -162,7 +162,7 @@ class Bytes(httpx.AsyncByteStream):
 
 
 def integration(config,monkeypatch,*,duration=10):
-    import autotuner.proxy as module
+    import tuneio.proxy as module
     clock=[0.];state=dict(duration=duration,status=200,headers={'cache-control':'public, max-age=60'},fail=False,calls=0)
     monkeypatch.setattr(module,'perf_counter',lambda:clock[0])
     def origin(req):
@@ -317,7 +317,7 @@ def test_decision_queue_pressure_and_legacy_readonly_report(config,monkeypatch):
 
 
 def test_cross_generation_read_does_not_train_or_refill(config,monkeypatch):
-    import autotuner.proxy as module
+    import tuneio.proxy as module
     clock=[0.];entered,gate=asyncio.Event(),asyncio.Event();hold={'on':False}
     monkeypatch.setattr(module,'perf_counter',lambda:clock[0])
     class Stream(httpx.AsyncByteStream):
@@ -344,8 +344,8 @@ def test_cross_generation_read_does_not_train_or_refill(config,monkeypatch):
 
 
 def test_incomplete_stream_rolls_back_adaptive_state_and_reservation(config,monkeypatch):
-    import autotuner.proxy as module
-    from autotuner.proxy import IncompleteResponse
+    import tuneio.proxy as module
+    from tuneio.proxy import IncompleteResponse
     clock=[0.];bad={'on':False}
     monkeypatch.setattr(module,'perf_counter',lambda:clock[0])
     def origin(req):
@@ -368,7 +368,7 @@ def test_incomplete_stream_rolls_back_adaptive_state_and_reservation(config,monk
 
 def test_tuning_decision_storage_fault_does_not_break_cache(config,monkeypatch):
     import sqlite3
-    from autotuner.storage import StorageUnavailable
+    from tuneio.storage import StorageUnavailable
     app,clock,state=integration(config,monkeypatch)
     async def scenario():
         await app.storage.start()
@@ -419,7 +419,7 @@ def test_cache_explain_control_and_cli_after_sixteen_adaptive_reads(config,monke
     from contextlib import nullcontext
     from unittest.mock import Mock
     import io
-    from autotuner import cli
+    from tuneio import cli
     payload=config.model_dump()
     payload['cache']['routes'] += [dict(id='other',match='/other',policy='adaptive'),dict(id='third',match='/third',policy='adaptive')]
     config=ProductConfig.model_validate(payload)
