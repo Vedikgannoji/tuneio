@@ -27,8 +27,7 @@ def evidence(tmp_path, monkeypatch):
         gates={key: dict(state='passed') for key in ('telemetry_health', 'stability_30_minutes')}))
     put('review_receipt', dict(schema_version=1, compatibility=[dict(os=os, python=version, pytest=True, node=True,
         core_coverage=True, clean_wheel_install=True) for os, version in release.MATRIX],
-        license_owner_approved=True, license_file_and_metadata_reviewed=True,
-        publisher_identity_confirmed=True, wheel_and_sdist_reviewed=True, pilot_integrations_reviewed=True))
+        **dict.fromkeys(release.REVIEW_FLAGS,True)))
     path = tmp_path / 'candidate.json'
     def save(): path.write_text(json.dumps(manifest)); return path
     return manifest, put, save

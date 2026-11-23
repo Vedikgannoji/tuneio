@@ -165,7 +165,7 @@ Resolve licensing and distribution ownership before a public registry upload. Ve
 | Distribution name and publisher | Working name api-performance-auto-tuner; Vedik verifies registry ownership | Before TestPyPI/PyPI rehearsal |
 | Reference host allocation | Vedik/release reviewer; not satisfied by local sandbox tests | Before performance qualification |
 | Concurrency controller | Reviewed design and tests required; current support is fixed configured bounds | Before optimization capability is enabled |
-| Version line | 2.1.0.dev0 development snapshot; no rewrite of published preview tags | Current source cycle |
+| Version line | 2.1.0b1 terminal workflow candidate | Before the registry release |
 
 ## Foundation acceptance checklist
 

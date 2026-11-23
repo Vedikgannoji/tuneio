@@ -71,6 +71,7 @@ class RequestSpec(Contract):
     headers: dict[str,str]=Field(default_factory=dict,max_length=32)
     body: Any=None
     include_response: StrictBool=False
+    fingerprint_response: StrictBool=False
     timeout_seconds: Annotated[int,Field(strict=True,ge=1,le=120)]=30
 
     _path=field_validator('path')(path_check)
@@ -179,6 +180,7 @@ class Result:
     content: bytes
     body_bytes: int
     truncated: bool
+    response_sha256: str | None = None
 
     def data(self):return json.loads(self.content)
 
@@ -198,6 +200,7 @@ async def execute(proxy,spec):
         headers.append((b'content-length',str(len(body)).encode()))
     status,response_headers=0,[]
     content=bytearray();body_bytes=0
+    fingerprint = hashlib.sha256() if spec.fingerprint_response else None
     sent=False
     async def receive():
         nonlocal sent
@@ -209,13 +212,16 @@ async def execute(proxy,spec):
         if message['type']=='http.response.start':status,response_headers=message['status'],message.get('headers',[])
         else:
             chunk=message.get('body',b'');body_bytes+=len(chunk)
+            if fingerprint is not None:
+                fingerprint.update(chunk)
             content.extend(chunk[:max(0,MAX_RESPONSE-len(content))])
     url=urlsplit(spec.path)
     scope=dict(type='http',asgi={'version':'3.0'},http_version='1.1',method=spec.method,scheme='http',
         path=unquote(url.path),raw_path=url.path.encode('utf-8'),query_string=url.query.encode('utf-8'),headers=headers)
     started=perf_counter()
     await asyncio.wait_for(proxy(scope,receive,send),spec.timeout_seconds)
-    return Result(status,(perf_counter()-started)*1000,response_headers,bytes(content),body_bytes,body_bytes>MAX_RESPONSE)
+    return Result(status,(perf_counter()-started)*1000,response_headers,bytes(content),body_bytes,body_bytes>MAX_RESPONSE,
+                  fingerprint.hexdigest() if fingerprint is not None else None)
 
 
 class ScenarioRunner:
@@ -267,7 +273,13 @@ class ScenarioRunner:
                             path=path_check(resolve(step.path,variables,path=True))
                             payload=dict(method=step.method,path=path,headers=resolve(step.headers,variables),timeout_seconds=step.timeout_seconds)
                             if 'body' in step.model_fields_set:payload['body']=resolve(step.body,variables)
+                            if step.fingerprint_response:
+                                payload['fingerprint_response'] = True
+                                start_offset = self.clock() - started
                             response=await self.executor(RequestSpec.model_validate(payload))
+                            if step.fingerprint_response:
+                                row.update(response_sha256=response.response_sha256, start_offset=start_offset,
+                                           end_offset=self.clock()-started)
                             row.update(status=response.status,duration_ms=response.duration_ms,cache=response.public()['cache'])
                             if response.status!=step.expect_status:raise AssertionError('unexpected_status')
                             if step.checks or step.capture:

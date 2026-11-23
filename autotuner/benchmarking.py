@@ -99,9 +99,9 @@ def canonical_config(config):
 
 class Child:
     """Only owned subprocesses, OS-assigned ports, stdin-driven graceful shutdown."""
-    def __init__(self,kind,path,*,factory=subprocess.Popen,start_timeout=30):
+    def __init__(self,kind,path,*,factory=subprocess.Popen,start_timeout=30,port=0):
         self.graceful=False
-        self.process=factory([sys.executable,'-m','autotuner.qualification_server','--kind',kind,'--path',str(path)],
+        self.process=factory([sys.executable,'-m','autotuner.qualification_server','--kind',kind,'--path',str(path),'--port',str(port)],
             stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,encoding='utf-8',
             creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         ready=Queue(maxsize=1)

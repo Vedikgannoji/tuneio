@@ -172,4 +172,18 @@ class ProductConfig(Contract):
 
 def load_config(path: str | Path) -> ProductConfig:
     """Parse and validate only; never opens a listener or contacts an upstream."""
-    return ProductConfig.model_validate(json.loads(Path(path).read_text(encoding='utf-8')))
+    return resolve_storage(ProductConfig.model_validate(config_document(path)[0]), path)
+
+
+def resolve_storage(config, path):
+    storage_path = Path(config.metrics.storage_path)
+    if not storage_path.is_absolute():
+        config.metrics.storage_path = str((Path(path).resolve().parent / storage_path).resolve())
+    return config
+
+
+def config_document(path):
+    from .optimization import CONFIG_LIMIT, unpack
+    from .artifacts import read_json
+    document, _ = read_json(path, CONFIG_LIMIT)
+    return unpack(document)

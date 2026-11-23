@@ -1,11 +1,14 @@
 {
   "schema_version": 1,
-  "tool_version": "2.0.0b2",
+  "tool_version": "2.1.0b1",
   "source_digest": "REPLACE_WITH_FROZEN_CANDIDATE_DIGEST",
   "compatibility": [],
   "license_owner_approved": false,
   "license_file_and_metadata_reviewed": false,
   "publisher_identity_confirmed": false,
   "wheel_and_sdist_reviewed": false,
-  "pilot_integrations_reviewed": false
+  "pilot_integrations_reviewed": false,
+  "installer_lifecycle_reviewed": false,
+  "terminal_budgets_reviewed": false,
+  "testpypi_artifact_verified": false
 }

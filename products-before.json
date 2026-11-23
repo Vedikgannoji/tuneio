@@ -1,0 +1,455 @@
+{
+  "schema_version": 1,
+  "baseline_id": "d50739a3-4fd0-42e2-86f0-1bbb30145457",
+  "session_id": "a3743173-f9a6-4e46-8ec5-9c482bb1250c",
+  "config_digest": "8ce29804918e10bfa9267f4e9c606cc4d3e10c4aee01a3e52cfc552965402950",
+  "config": {
+    "schema_version": 1,
+    "upstream": "http://{upstream}",
+    "listen": "loopback",
+    "mode": "observe",
+    "operations": [
+      {
+        "method": "GET",
+        "path": "/api/products"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/products/*"
+      }
+    ],
+    "limits": {
+      "upstream_concurrency": 8,
+      "queue_capacity": 64,
+      "request_body_bytes": 8388608,
+      "header_bytes": 65536,
+      "connect_timeout_seconds": 5,
+      "read_timeout_seconds": 30,
+      "response_timeout_seconds": 60,
+      "cache_bytes": 67108864,
+      "cache_entries": 256,
+      "cache_entry_bytes": 1048576
+    },
+    "cache": {
+      "routes": []
+    },
+    "metrics": {
+      "raw_capacity": 10000,
+      "retention_days": 7,
+      "storage_max_bytes": 104857600,
+      "storage_path": "{local_storage}",
+      "writer_queue_capacity": 1024
+    },
+    "tuning": {
+      "sample_capacity": 20,
+      "minimum_samples": 4,
+      "reuse_minimum": 2,
+      "enable_ms": 2.0,
+      "retain_ms": 1.5,
+      "cooldown_seconds": 5.0,
+      "reuse_window_seconds": 60.0,
+      "learning_window_seconds": 300.0,
+      "history_capacity": 100
+    }
+  },
+  "tool_version": "2.1.0b1",
+  "proxy_version": "2.1.0b1",
+  "client_source_sha256": "562a47da2e9eb746bd162daf736b6df9b31ec53c768185725c616a7def7e6701",
+  "proxy_source_sha256": "562a47da2e9eb746bd162daf736b6df9b31ec53c768185725c616a7def7e6701",
+  "stage": "baseline",
+  "comparison_context": "765d4295e38abdffedc69047b6d973d05947153dad62ca0c7ed33eca5d36225b",
+  "captured_at": "2026-11-23T14:38:39.247445+00:00",
+  "kind": "active",
+  "window_seconds": 300,
+  "state": "completed",
+  "sampling_note": "Proxy metrics and insights are separate rolling snapshots and may include other traffic. Workload timings measure only the explicit scenario at the proxy boundary.",
+  "workload": {
+    "method": "GET",
+    "operation": "/api/products",
+    "requests": 8,
+    "delay_ms": 100,
+    "timeout_seconds": 3,
+    "concurrency": 1,
+    "environment": "local",
+    "expected_status": 200,
+    "app_state_digest": "bf32000bd6671d64d053083dd9e9d98f6d5af70d3ffb617411fb124885b440e8",
+    "warmup": 5
+  },
+  "workload_digest": "4e93789e8e5e9531010ecfc750f10662b4789b2ac49cfda91253e919f0b04650",
+  "active_result": {
+    "state": "completed",
+    "samples": [
+      {
+        "status": 200,
+        "duration_ms": 3.9032999775372446,
+        "passed": true,
+        "reason": "expected_response",
+        "response_sha256": "581d90b8a0be00b45ff80a09d2e9b94ac0751118a36149126c8ac85e2923392e",
+        "cache": "BYPASS"
+      },
+      {
+        "status": 200,
+        "duration_ms": 3.224399988539517,
+        "passed": true,
+        "reason": "expected_response",
+        "response_sha256": "581d90b8a0be00b45ff80a09d2e9b94ac0751118a36149126c8ac85e2923392e",
+        "cache": "BYPASS"
+      },
+      {
+        "status": 200,
+        "duration_ms": 3.0962000018917024,
+        "passed": true,
+        "reason": "expected_response",
+        "response_sha256": "581d90b8a0be00b45ff80a09d2e9b94ac0751118a36149126c8ac85e2923392e",
+        "cache": "BYPASS"
+      },
+      {
+        "status": 200,
+        "duration_ms": 2.987299987580627,
+        "passed": true,
+        "reason": "expected_response",
+        "response_sha256": "581d90b8a0be00b45ff80a09d2e9b94ac0751118a36149126c8ac85e2923392e",
+        "cache": "BYPASS"
+      },
+      {
+        "status": 200,
+        "duration_ms": 4.744799982290715,
+        "passed": true,
+        "reason": "expected_response",
+        "response_sha256": "581d90b8a0be00b45ff80a09d2e9b94ac0751118a36149126c8ac85e2923392e",
+        "cache": "BYPASS"
+      },
+      {
+        "status": 200,
+        "duration_ms": 2.7772000175900757,
+        "passed": true,
+        "reason": "expected_response",
+        "response_sha256": "581d90b8a0be00b45ff80a09d2e9b94ac0751118a36149126c8ac85e2923392e",
+        "cache": "BYPASS"
+      },
+      {
+        "status": 200,
+        "duration_ms": 3.712099976837635,
+        "passed": true,
+        "reason": "expected_response",
+        "response_sha256": "581d90b8a0be00b45ff80a09d2e9b94ac0751118a36149126c8ac85e2923392e",
+        "cache": "BYPASS"
+      },
+      {
+        "status": 200,
+        "duration_ms": 3.43290000455454,
+        "passed": true,
+        "reason": "expected_response",
+        "response_sha256": "581d90b8a0be00b45ff80a09d2e9b94ac0751118a36149126c8ac85e2923392e",
+        "cache": "BYPASS"
+      }
+    ],
+    "completed": 8,
+    "errors": 0,
+    "mean_ms": 3.484774992102757,
+    "p50_ms": 3.224399988539517,
+    "p95_ms": 4.744799982290715,
+    "p99_ms": 4.744799982290715,
+    "elapsed_seconds": 0.7531416999991052,
+    "requests_per_second": 10.62217110008582,
+    "warmup_completed": 5
+  },
+  "metrics": {
+    "window_seconds": 300,
+    "retained_samples": 120,
+    "capacity": 10000,
+    "total_recorded": 120,
+    "evicted_samples": 0,
+    "window_may_be_incomplete": false,
+    "summary": {
+      "count": 110,
+      "requests_per_second": 0.36666666666666664,
+      "error_rate": 0.0,
+      "server_error_rate": 0.0,
+      "mean_ms": 4.3921181826259605,
+      "p50_ms": 3.900399955455214,
+      "p95_ms": 7.3738000355660915,
+      "p99_ms": 7.980299997143447,
+      "cache_hits": 0
+    },
+    "routes": {
+      "GET /api/products": {
+        "count": 110,
+        "requests_per_second": 0.36666666666666664,
+        "error_rate": 0.0,
+        "server_error_rate": 0.0,
+        "mean_ms": 4.3921181826259605,
+        "p50_ms": 3.900399955455214,
+        "p95_ms": 7.3738000355660915,
+        "p99_ms": 7.980299997143447,
+        "cache_hits": 0
+      }
+    },
+    "schema_version": 1,
+    "session_id": "a3743173-f9a6-4e46-8ec5-9c482bb1250c",
+    "duration_boundary": "proxy handling through downstream completion",
+    "transport": {
+      "upstream_requests": 120,
+      "completed_requests": 120,
+      "failed_requests": 0,
+      "incomplete_responses": 0,
+      "cancelled_requests": 0,
+      "overload_rejections": 0,
+      "queue_ms": 2.9597997781820595,
+      "upstream_ms": 489.44369913078845
+    },
+    "storage": {
+      "persistent": true,
+      "state": "ready",
+      "last_error": null,
+      "writer_batch_window_ms": 20.0,
+      "writer_batch_limit": 64,
+      "queue_depth": 0,
+      "queue_capacity": 1024,
+      "disk_bytes": 86016,
+      "disk_budget_bytes": 104857600,
+      "tuning_history_may_be_incomplete": false,
+      "transport": {
+        "upstream_requests": 120,
+        "completed_requests": 120,
+        "failed_requests": 0,
+        "incomplete_responses": 0,
+        "cancelled_requests": 0,
+        "overload_rejections": 0,
+        "queue_ms": 2.9597997781820595,
+        "upstream_ms": 489.44369913078845
+      },
+      "enqueued_observations": 240,
+      "persisted_observations": 240,
+      "dropped_queue": 0,
+      "dropped_storage": 0,
+      "retention_truncated": 0,
+      "budget_truncated": 0,
+      "sessions_truncated": 0,
+      "write_errors": 0,
+      "persisted_tuning_decisions": 0,
+      "dropped_tuning_decisions": 0,
+      "tuning_decisions_truncated": 0,
+      "write_batches": 81,
+      "largest_batch_observations": 6,
+      "sampling_incomplete": false
+    },
+    "upstream": {
+      "window_seconds": 300,
+      "retained_samples": 120,
+      "capacity": 10000,
+      "total_recorded": 120,
+      "evicted_samples": 0,
+      "window_may_be_incomplete": false,
+      "summary": {
+        "count": 110,
+        "requests_per_second": 0.36666666666666664,
+        "error_rate": 0.0,
+        "server_error_rate": 0.0,
+        "mean_ms": 3.627557265678082,
+        "p50_ms": 3.185699984896928,
+        "p95_ms": 6.359099934343249,
+        "p99_ms": 7.128199969884008,
+        "cache_hits": 0
+      },
+      "routes": {
+        "GET /api/products": {
+          "count": 110,
+          "requests_per_second": 0.36666666666666664,
+          "error_rate": 0.0,
+          "server_error_rate": 0.0,
+          "mean_ms": 3.627557265678082,
+          "p50_ms": 3.185699984896928,
+          "p95_ms": 6.359099934343249,
+          "p99_ms": 7.128199969884008,
+          "cache_hits": 0
+        }
+      }
+    },
+    "upstream_duration_boundary": "active upstream I/O excluding admission and downstream send waits"
+  },
+  "insights": {
+    "schema_version": 1,
+    "generated_at": "2026-11-23T14:38:40.830425+00:00",
+    "window_seconds": 300,
+    "state": "findings_available",
+    "effective_mode": "observe",
+    "recommendations_applied": false,
+    "thresholds": {
+      "minimum_samples": 5,
+      "slow_mean_ms": 100,
+      "tail_minimum_samples": 20,
+      "tail_p95_ms": 250,
+      "regression_cohort_samples": 5,
+      "regression_ratio": 1.5,
+      "regression_increase_ms": 5,
+      "regression_window_seconds": 300,
+      "error_rate": 0.1,
+      "queue_p95_ms": 5,
+      "queue_fraction": 0.25,
+      "cache_minimum_samples": 4,
+      "cache_origin_mean_ms": 2,
+      "reuse_window_seconds": 60,
+      "reuse_minimum": 2,
+      "cache_cohort_samples": 20
+    },
+    "evidence_quality": {
+      "proxy_samples": 110,
+      "upstream_samples": 110,
+      "raw_evictions": 0,
+      "window_may_be_incomplete": false,
+      "storage_sampling_incomplete": false,
+      "history": "live bounded raw observations; reset on restart"
+    },
+    "findings": [
+      {
+        "code": "cache_policy_review",
+        "severity": "info",
+        "operation": "GET /api/products",
+        "boundary": "upstream",
+        "evidence": {
+          "samples": 20,
+          "mean_ms": 3.678304998902604,
+          "same_key_observations": 13,
+          "state": "explicit_rule_required"
+        },
+        "thresholds": {
+          "minimum_samples": 4,
+          "mean_ms": 2,
+          "same_key_observations": 2,
+          "reuse_window_seconds": 60
+        },
+        "recommendation": "Review public-data eligibility, HTTP freshness, variants and mutation invalidation before approving a cache rule. No cache change has been applied.",
+        "applied": false
+      }
+    ],
+    "evaluations": [
+      {
+        "operation": "GET /api/products",
+        "proxy_samples": 110,
+        "upstream_samples": 110,
+        "successful_origin_samples": 110,
+        "origin_mean_ms": 3.627557265678082,
+        "origin_p95_ms": 6.359099934343249,
+        "regression_samples": 110,
+        "regression_required_samples": 10,
+        "latency_minimum_samples": 5
+      }
+    ],
+    "cache_suitability": [
+      {
+        "operation": "GET /api/products",
+        "state": "explicit_rule_required",
+        "samples": 20,
+        "origin_mean_ms": 3.678304998902604,
+        "maximum_same_key_observations": 13,
+        "reuse_window_seconds": 60,
+        "screening_reasons": {
+          "review_required": 110
+        },
+        "rule_id": null,
+        "approved_for_caching": false,
+        "response_cache_serving_enabled": false
+      }
+    ],
+    "session_id": "a3743173-f9a6-4e46-8ec5-9c482bb1250c",
+    "config_digest": "8ce29804918e10bfa9267f4e9c606cc4d3e10c4aee01a3e52cfc552965402950",
+    "tool_version": "2.1.0b1",
+    "cache": {
+      "mode": "observe",
+      "rules_enabled": 0,
+      "entries": 0,
+      "accounted_bytes": 0,
+      "peak_accounted_bytes": 0,
+      "byte_budget": 67108864,
+      "retired_pinned_entries": 0,
+      "coordination_keys": 0,
+      "active_writes": 0,
+      "hits": 0,
+      "misses": 0,
+      "bypasses": 120,
+      "stores": 0,
+      "evictions": 0,
+      "expirations": 0,
+      "invalidations": 0,
+      "coalesced_waiters": 0,
+      "generation_rejections": 0
+    }
+  },
+  "resources": {
+    "runtime": {
+      "in_flight": 0,
+      "hot_reads": 0,
+      "active_tasks": 4
+    },
+    "cache": {
+      "mode": "observe",
+      "rules_enabled": 0,
+      "entries": 0,
+      "accounted_bytes": 0,
+      "peak_accounted_bytes": 0,
+      "byte_budget": 67108864,
+      "retired_pinned_entries": 0,
+      "coordination_keys": 0,
+      "active_writes": 0,
+      "hits": 0,
+      "misses": 0,
+      "bypasses": 120,
+      "stores": 0,
+      "evictions": 0,
+      "expirations": 0,
+      "invalidations": 0,
+      "coalesced_waiters": 0,
+      "generation_rejections": 0
+    },
+    "storage": {
+      "persistent": true,
+      "state": "ready",
+      "last_error": null,
+      "writer_batch_window_ms": 20.0,
+      "writer_batch_limit": 64,
+      "queue_depth": 0,
+      "queue_capacity": 1024,
+      "disk_bytes": 86016,
+      "disk_budget_bytes": 104857600,
+      "tuning_history_may_be_incomplete": false,
+      "transport": {
+        "upstream_requests": 120,
+        "completed_requests": 120,
+        "failed_requests": 0,
+        "incomplete_responses": 0,
+        "cancelled_requests": 0,
+        "overload_rejections": 0,
+        "queue_ms": 2.9597997781820595,
+        "upstream_ms": 489.44369913078845
+      },
+      "enqueued_observations": 240,
+      "persisted_observations": 240,
+      "dropped_queue": 0,
+      "dropped_storage": 0,
+      "retention_truncated": 0,
+      "budget_truncated": 0,
+      "sessions_truncated": 0,
+      "write_errors": 0,
+      "persisted_tuning_decisions": 0,
+      "dropped_tuning_decisions": 0,
+      "tuning_decisions_truncated": 0,
+      "write_batches": 81,
+      "largest_batch_observations": 6,
+      "sampling_incomplete": false
+    },
+    "limits": {
+      "upstream_concurrency": 8,
+      "queue_capacity": 64,
+      "request_body_bytes": 8388608,
+      "header_bytes": 65536,
+      "connect_timeout_seconds": 5,
+      "read_timeout_seconds": 30,
+      "response_timeout_seconds": 60,
+      "cache_bytes": 67108864,
+      "cache_entries": 256,
+      "cache_entry_bytes": 1048576
+    },
+    "uptime_seconds": 349.5691173999803
+  }
+}

@@ -57,6 +57,21 @@ class Console:
             series=timeseries(self.proxy.metrics,window),operations=[op.model_dump() for op in self.proxy.config.operations],
             scenario={k:v for k,v in current.items() if k!='results'} if current else None)
 
+    def monitor(self, window):
+        cache = self.proxy.cache
+        policies = []
+        for rule in self.proxy.config.cache.routes:
+            tuning = cache.controller.evaluate(rule) if rule.policy == 'adaptive' else None
+            state = 'serving' if cache.serving(rule) else 'bypass'
+            detail = (f"{tuning['reason']} · {tuning['inputs']['successful_samples']} samples · TTL {tuning['ttl_seconds']:g}s"
+                      if tuning else rule.policy)
+            policies.append(dict(id=rule.id, match=rule.match, state=state, detail=detail))
+        insights = analyze(self.proxy.config, self.proxy.metrics, self.proxy.upstream_metrics,
+                           transport=self.proxy.counters, storage=self.storage.health(), window=window)
+        return dict(schema_version=1, status=self.status(), metrics=self.proxy.metrics.snapshot(window),
+                    findings=insights['findings'], evidence_quality=insights['evidence_quality'],
+                    policies=policies, decisions=list(cache.controller.history))
+
     async def read_json(self,scope,receive):
         headers=dict(scope.get('headers',[]))
         if headers.get(b'content-type',b'').split(b';')[0].strip().lower()!=b'application/json':raise TypeError('JSON required')

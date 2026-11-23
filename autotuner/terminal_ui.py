@@ -1,0 +1,142 @@
+"""Terminal palette, display sizing, and platform keyboard input."""
+from contextlib import contextmanager
+import os
+from shutil import get_terminal_size
+import sys
+from time import monotonic, sleep
+from unicodedata import east_asian_width, combining
+
+PALETTE = {
+    'title': '1;38;2;210;170;255',
+    'accent': '1;38;2;191;139;255',
+    'selected': '1;48;2;79;46;131;38;2;252;245;255',
+    'text': '38;2;235;226;247',
+    'muted': '38;2;183;168;205',
+    'ok': '1;38;2;133;233;188',
+    'warn': '1;38;2;255;198;136',
+    'bad': '1;38;2;255;151;178',
+    'border': '38;2;114;77;170',
+}
+GRADIENT = ((234,207,255), (221,183,255), (201,153,252), (177,123,245), (151,100,226))
+PIXELS = {
+    'A': (14, 17, 31, 17, 17), 'U': (17, 17, 17, 17, 14), 'T': (31, 4, 4, 4, 4),
+    'O': (14, 17, 17, 17, 14), 'N': (17, 25, 21, 19, 17), 'E': (31, 16, 30, 16, 31),
+    'R': (30, 17, 30, 18, 17),
+}
+
+
+def clip(value, width):
+    result = []
+    size = 0
+    for char in str(value)[:4096]:
+        char = char if char.isprintable() else ' '
+        cells = 0 if combining(char) else (2 if east_asian_width(char) in ('W', 'F') else 1)
+        if size + cells > width:
+            break
+        result.append(char)
+        size += cells
+    return ''.join(result)
+
+
+def terminal_size():
+    size = get_terminal_size((100, 28))
+    return min(132, max(8, size.columns-1)), max(3, size.lines)
+
+
+def windows_vt(stdout):
+    import ctypes
+    import msvcrt
+    handle = ctypes.c_void_p(msvcrt.get_osfhandle(stdout.fileno()))
+    mode = ctypes.c_uint()
+    kernel = ctypes.windll.kernel32
+    return bool(kernel.GetConsoleMode(handle, ctypes.byref(mode)) and kernel.SetConsoleMode(handle, mode.value | 4))
+
+
+class Theme:
+    def __init__(self, stdout, *, plain=False):
+        self.stdout = stdout
+        self.rich = False
+        if plain or stdout is not sys.stdout or not stdout.isatty() or os.getenv('TERM') == 'dumb' or 'NO_COLOR' in os.environ:
+            return
+        try:
+            stdout.fileno()
+            self.rich = os.name != 'nt' or windows_vt(stdout)
+        except (OSError, AttributeError, ValueError):
+            pass
+
+    def glyph(self, preferred, fallback):
+        try:
+            preferred.encode(self.stdout.encoding or 'ascii')
+        except UnicodeEncodeError:
+            return fallback
+        return preferred
+
+    def paint(self, style, text):
+        return f'\x1b[{PALETTE[style]}m{text}\x1b[0m' if self.rich else text
+
+    def banner(self, width, height):
+        if not self.rich or width < 53 or height < 21:
+            return [self.paint('title', 'AUTOTUNER')]
+        pixel = self.glyph('█', '#')
+        return [f'\x1b[38;2;{red};{green};{blue}m' +
+                ' '.join(''.join(pixel if PIXELS[letter][row] & (1 << column) else ' '
+                                 for column in range(4, -1, -1)) for letter in 'AUTOTUNER') + '\x1b[0m'
+                for row, (red, green, blue) in enumerate(GRADIENT)]
+
+    def screen(self, lines):
+        self.stdout.write(('\x1b[H\x1b[J' if self.rich else '') + '\n'.join(lines) + '\n')
+        self.stdout.flush()
+
+
+class Keyboard:
+    def __init__(self, stdin):
+        self.stdin = stdin
+
+    @contextmanager
+    def active(self):
+        if os.name == 'nt':
+            yield
+        else:
+            import termios
+            import tty
+            fd = self.stdin.fileno()
+            original = termios.tcgetattr(fd)
+            tty.setcbreak(fd)
+            try:
+                yield
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, original)
+
+    def read(self, seconds):
+        if os.name == 'nt':
+            import msvcrt
+            deadline = monotonic() + seconds
+            while not msvcrt.kbhit():
+                remaining = deadline-monotonic()
+                if remaining <= 0:
+                    return None
+                sleep(min(.05, remaining))
+            key = msvcrt.getwch()
+            if key in ('\x00', '\xe0'):
+                return {'H':'up', 'P':'down', 'K':'left', 'M':'right'}.get(msvcrt.getwch(), '')
+        else:
+            from select import select
+            fd = self.stdin.fileno()
+            if not select([fd], [], [], seconds)[0]:
+                return None
+            raw = os.read(fd, 1)
+            if not raw:
+                raise EOFError()
+            if raw == b'\x1b':
+                for _ in range(2):
+                    if not select([fd], [], [], .02)[0]:
+                        break
+                    raw += os.read(fd, 1)
+                return {b'\x1b[A':'up', b'\x1b[B':'down', b'\x1b[C':'right',
+                        b'\x1b[D':'left', b'\x1b':'back'}.get(raw, '')
+            key = raw.decode('ascii', errors='ignore')
+        if key == '\x03':
+            raise KeyboardInterrupt()
+        if key in ('\x04', '\x1a'):
+            raise EOFError()
+        return {'\r':'enter', '\n':'enter', '\x1b':'back', '\t':'tab'}.get(key, key.lower())

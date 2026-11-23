@@ -1,0 +1,83 @@
+{
+  "kind": "autotuner-policy-revision",
+  "schema_version": 1,
+  "action": "rollback",
+  "revision": "46ba494f847d9ff6206971ac4d4f9f6937bd843d85457ae4215e91d31eb4d7d5",
+  "parent_digest": "2a584db93f030cb053f1b5f9519b1986b166e6d623f41e75db29f05e0fbc8671",
+  "config": {
+    "schema_version": 1,
+    "upstream": "http://127.0.0.1:3000",
+    "listen": "127.0.0.1:8080",
+    "mode": "observe",
+    "operations": [
+      {
+        "method": "GET",
+        "path": "/api/products"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/products/*"
+      }
+    ],
+    "limits": {
+      "upstream_concurrency": 8,
+      "queue_capacity": 64,
+      "request_body_bytes": 8388608,
+      "header_bytes": 65536,
+      "connect_timeout_seconds": 5,
+      "read_timeout_seconds": 30,
+      "response_timeout_seconds": 60,
+      "cache_bytes": 67108864,
+      "cache_entries": 256,
+      "cache_entry_bytes": 1048576
+    },
+    "cache": {
+      "routes": []
+    },
+    "metrics": {
+      "raw_capacity": 10000,
+      "retention_days": 7,
+      "storage_max_bytes": 104857600,
+      "storage_path": "E:\\API-Performance-Auto-Tuner\\.autotuner\\metrics.sqlite3",
+      "writer_queue_capacity": 1024
+    },
+    "tuning": {
+      "sample_capacity": 20,
+      "minimum_samples": 4,
+      "reuse_minimum": 2,
+      "enable_ms": 2.0,
+      "retain_ms": 1.5,
+      "cooldown_seconds": 5.0,
+      "reuse_window_seconds": 60.0,
+      "learning_window_seconds": 300.0,
+      "history_capacity": 100
+    }
+  },
+  "previous_policy": {
+    "mode": "adaptive",
+    "cache": {
+      "routes": [
+        {
+          "id": "public-b1487845833c",
+          "match": "/api/products",
+          "methods": [
+            "GET"
+          ],
+          "policy": "adaptive",
+          "ttl_min_seconds": 2,
+          "ttl_max_seconds": 30,
+          "vary_headers": [
+            "Accept",
+            "Accept-Encoding"
+          ],
+          "invalidate_on": [
+            {
+              "method": "PATCH",
+              "path": "/api/products/*"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

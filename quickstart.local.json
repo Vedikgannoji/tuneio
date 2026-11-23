@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "upstream": "http://127.0.0.1:3000",
+  "listen": "127.0.0.1:8080",
+  "mode": "observe",
+  "operations": [],
+  "limits": {
+    "upstream_concurrency": 8,
+    "queue_capacity": 64,
+    "request_body_bytes": 8388608,
+    "header_bytes": 65536,
+    "connect_timeout_seconds": 5,
+    "read_timeout_seconds": 30,
+    "response_timeout_seconds": 60,
+    "cache_bytes": 67108864,
+    "cache_entries": 256,
+    "cache_entry_bytes": 1048576
+  },
+  "cache": {
+    "routes": []
+  },
+  "metrics": {
+    "raw_capacity": 10000,
+    "retention_days": 7,
+    "storage_max_bytes": 104857600,
+    "storage_path": ".autotuner/metrics.sqlite3",
+    "writer_queue_capacity": 1024
+  },
+  "tuning": {
+    "sample_capacity": 20,
+    "minimum_samples": 4,
+    "reuse_minimum": 2,
+    "enable_ms": 2.0,
+    "retain_ms": 1.5,
+    "cooldown_seconds": 5.0,
+    "reuse_window_seconds": 60.0,
+    "learning_window_seconds": 300.0,
+    "history_capacity": 100
+  }
+}

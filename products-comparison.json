@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "tool_version": "2.1.0b1",
+  "kind": "matched-read-comparison",
+  "comparable": true,
+  "reasons": [],
+  "baseline_id": "d50739a3-4fd0-42e2-86f0-1bbb30145457",
+  "optimized_id": "1700b4f6-5a7c-4a56-913b-b6d6d46b79d1",
+  "boundary": "explicit scenario through proxy completion",
+  "limitations": "Sequential repeated GETs. External traffic, upstream warm state and host load can affect timings. Elapsed time includes pacing. Rolling telemetry is excluded.",
+  "workload": {
+    "method": "GET",
+    "operation": "/api/products",
+    "requests": 8,
+    "delay_ms": 100,
+    "timeout_seconds": 3,
+    "concurrency": 1,
+    "environment": "local",
+    "expected_status": 200,
+    "app_state_digest": "bf32000bd6671d64d053083dd9e9d98f6d5af70d3ffb617411fb124885b440e8",
+    "warmup": 5
+  },
+  "baseline": {
+    "requests": 8,
+    "errors": 0,
+    "hits": 0,
+    "elapsed_seconds": 0.7531416999991052,
+    "requests_per_second": 10.62217110008582,
+    "mean_ms": 3.484774992102757,
+    "p50_ms": 3.224399988539517,
+    "p95_ms": 4.744799982290715,
+    "p99_ms": 4.744799982290715
+  },
+  "optimized": {
+    "requests": 8,
+    "errors": 0,
+    "hits": 8,
+    "elapsed_seconds": 0.7593842999776825,
+    "requests_per_second": 10.534850404775437,
+    "mean_ms": 0.7377749934676103,
+    "p50_ms": 0.541799992788583,
+    "p95_ms": 1.3718000263907015,
+    "p99_ms": 1.3718000263907015
+  },
+  "optimized_cache_hit_observed": true,
+  "latency_reduction_percent": {
+    "mean_ms": 78.82861891687223,
+    "p50_ms": 83.19687400092103,
+    "p95_ms": 71.08834868675712,
+    "p99_ms": 71.08834868675712
+  }
+}

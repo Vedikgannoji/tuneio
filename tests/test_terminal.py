@@ -59,7 +59,7 @@ def test_json_manifest_does_not_scan_read_config_or_connect(tmp_path,monkeypatch
     assert cli.main(['--no-input','menu','--project',str(tmp_path),'--json'])==0
     data=json.loads(capsys.readouterr().out)
     assert data['schema_version']==1 and data['read_only_on_entry'] is True and data['interactive'] is False
-    assert len(data['groups'])==4 and len(data['planned_features'])==2
+    assert len(data['groups'])==4 and data['planned_features']==[]
     assert 'phase' not in data
 
 
@@ -105,7 +105,7 @@ def test_route_input_is_validated_before_control_request(tmp_path,route):
 def test_navigation_help_and_invalid_choice(tmp_path):
     invoke=Mock(return_value=0)
     code,out,err=run_menu(tmp_path,'unknown\nh\n1\nh\nb\n2\n0\n0\n',invoke)
-    assert code==0 and not err and 'Choose a listed key' in out and 'Planned:' in out
+    assert code==0 and not err and 'Choose a listed key' in out and 'Monitor shows live traffic' in out
     invoke.assert_not_called()
 
 

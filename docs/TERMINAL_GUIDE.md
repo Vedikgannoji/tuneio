@@ -1,40 +1,16 @@
-# Autotuner terminal workspace
+# Autotuner terminal guide
 
-Open `autotuner` in a terminal from your project directory, or run `autotuner menu --project .`. Select a number or letter and press Enter. Use **b** or **0** to return, **q** to quit and **h** or **?** for help. This interface uses ordinary line input; raw arrow-key navigation and a live monitoring viewport are planned.
+## Start the workspace
 
-Opening the workspace stays offline. It shows the selected project and configuration without scanning project files, starting an application or generating API traffic. Choose discovery explicitly from Setup to inspect the project.
+Run `autotuner` from your project or use `autotuner menu --project PATH --config FILE`. Entry is offline. It reads terminal input after you select a menu action. Use arrows and Enter, number keys, **b** to go back, **q** to quit and **h** for help.
 
-## Available actions
+The terminal supplies the font. For the purple block-letter title and highlighted selection, use a true-color terminal such as Windows Terminal with Cascadia Mono or JetBrains Mono. On narrow terminals the title fits on one line. `--plain` and `NO_COLOR=1` use line prompts. Redirected scripts can use `autotuner menu --json` for the action list.
 
-| Menu | Actions |
-| --- | --- |
-| Setup and configuration | Validate config, create observe config, run proxy, offline diagnostics, explicit TCP check |
-| Session and insights | Session status, endpoint metrics, advisory performance insights |
-| Cache and policies | Explain a route; clear stored responses after confirmation |
-| Reports and history | List stored sessions; show/export stored JSON; export live JSON |
+## Complete demo on Windows
 
-Use **p** to select another project or **c** to select its configuration. Relative paths resolve against the selected project. Changing the project resets the selected config to that project's autotuner.json. Selecting a path does not create or read its configuration. An explicit --config value overrides AUTOTUNER_CONFIG, then the default is autotuner.json.
+Use three Command Prompt windows. Choose free ports if 3000 or 8080 are already occupied. The RAM upstream and the files under `tmp\beta-review` are disposable. Choose a new directory name for a second run.
 
-Configuration creation asks for the upstream URL and acknowledgement, uses observe mode and refuses to overwrite. Running the proxy here asks for acknowledgement and occupies this terminal until Ctrl+C stops it. For menu session actions, keep the proxy running in another terminal. Clearing cached responses retains configured rules. Export paths resolve against the selected project and existing files are not overwritten.
-
-## Windows walkthrough
-
-### Discover and review an observe configuration
-
-From an activated repository environment, run the following for your API project's directory. `discover` prefers `openapi.json` at the project root. Otherwise it inspects literal decorators on top-level FastAPI instances and simple factories that return a locally constructed app. Use `--openapi path/to/schema.json` for another local OpenAPI 3 JSON file, or `--openapi-url http://127.0.0.1:8000/openapi.json` to explicitly read a running local API's description. The URL mode requires a loopback IP and uses a bounded GET with redirects disabled.
-
-```bat
-python -m autotuner discover --project .
-python -m autotuner setup --project . --select 1 --upstream http://127.0.0.1:8000 --output discovered.json --json
-```
-
-Choose an ID from the inventory instead of `1` if appropriate. Repeat `--select` for additional operations and use the same discovery source flags for preview and apply. Review the operation labels, upstream, loopback listener and destination. To create the file, rerun the preview command with `--apply YOUR_REVIEW_TOKEN`, replacing `YOUR_REVIEW_TOKEN` with the printed token. Use a new output filename if the destination already exists. The config starts in observe mode with an empty cache policy list.
-
-Static discovery reports candidates. Router prefixes, more complex factories, mounts and dynamic paths may require the running OpenAPI description or manual configuration. Paths with whole-segment parameters become `*` labels. Unsupported paths and referenced OpenAPI path items are skipped, and ambiguous selections need to be narrowed before writing. Possible entry points are informational. Start your API with its documented command, then run `python -m autotuner serve --config discovered.json` in another terminal. Stop the proxy with Ctrl+C.
-
-### Try the disposable upstream
-
-Install from the checkout first. These commands use Windows Command Prompt and the existing repository location. No browser or frontend server is needed.
+Install once from the checkout. If you already have a development environment, activate it and install the current source.
 
 ```bat
 cd /d E:\API-Performance-Auto-Tuner
@@ -42,10 +18,9 @@ python -m venv .venv
 .venv\Scripts\activate
 python -m pip install -e ".[test,benchmark,release]"
 autotuner --version
-autotuner menu --json
 ```
 
-Stop older demo/proxy terminals with Ctrl+C before starting this walkthrough, so ports 3000 and 8080 are available. Terminal 1: start the disposable demo upstream and keep it running.
+**Terminal 1** starts the upstream. Keep it running for both captures so application state remains the same.
 
 ```bat
 cd /d E:\API-Performance-Auto-Tuner
@@ -53,42 +28,76 @@ cd /d E:\API-Performance-Auto-Tuner
 autotuner demo --listen 127.0.0.1:3000
 ```
 
-Terminal 2: create an observe config once, then start the proxy and keep it running. If menu-review.local.json already exists, reuse it and skip init; do not replace it unintentionally.
+**Terminal 2** describes the disposable API, previews a project config and runs the proxy. Copy the preview's `review_token` into the apply command.
 
 ```bat
 cd /d E:\API-Performance-Auto-Tuner
 .venv\Scripts\activate
-autotuner init --config menu-review.local.json --upstream http://127.0.0.1:3000
-autotuner serve --config menu-review.local.json
+mkdir tmp\beta-review
+>tmp\beta-review\openapi.json echo {"openapi":"3.1.0","paths":{"/api/products":{"get":{}},"/api/products/{id}":{"patch":{}}}}
+autotuner discover --project tmp\beta-review
+autotuner setup --project tmp\beta-review --select 1 --select 2 --upstream http://127.0.0.1:3000 --output observe.json --json
+autotuner setup --project tmp\beta-review --select 1 --select 2 --upstream http://127.0.0.1:3000 --output observe.json --apply SETUP_TOKEN --json
+autotuner serve --config tmp\beta-review\observe.json
 ```
 
-Terminal 3: send an explicit request, then inspect the running session using the menu.
+**Terminal 3** verifies forwarding, previews the baseline, then captures it. Replace `BASELINE_TOKEN` with the preview's token. The browser is optional.
 
 ```bat
 cd /d E:\API-Performance-Auto-Tuner
 .venv\Scripts\activate
 curl.exe -i http://127.0.0.1:8080/api/products
-autotuner menu --project . --config menu-review.local.json
+autotuner baseline --config tmp\beta-review\observe.json --output tmp\beta-review\before.json --get /api/products --environment local --requests 8 --warmup 5 --app-state demo-seed-v1 --json
+autotuner baseline --config tmp\beta-review\observe.json --output tmp\beta-review\before.json --get /api/products --environment local --requests 8 --warmup 5 --app-state demo-seed-v1 --apply BASELINE_TOKEN --json
+autotuner optimize enable --config tmp\beta-review\observe.json --route /api/products --baseline tmp\beta-review\before.json --output tmp\beta-review\adaptive.json --json
+autotuner optimize enable --config tmp\beta-review\observe.json --route /api/products --baseline tmp\beta-review\before.json --output tmp\beta-review\adaptive.json --apply POLICY_TOKEN --json
 ```
 
-Choose **2**, then **1**, **2** or **3** to inspect status, endpoint metrics or insights. Choose **b**, then **4** for stored reports/history or a live JSON export. Quit with **q**. Stop terminals 2 and 1 with Ctrl+C when finished. The RAM demo resets on restart; reports use the selected config's bounded local telemetry store.
+Replace `POLICY_TOKEN` with the optimization preview's token. Verify the preview includes the PATCH dependency and adaptive thresholds. Stop the proxy in Terminal 2 with **Ctrl+C**. Start the new revision in that terminal.
 
-Linux/macOS use `source .venv/bin/activate` and `curl` instead of the Windows activation path and curl.exe. Change to your checkout/project path in each terminal.
+```bat
+autotuner serve --config tmp\beta-review\adaptive.json
+```
 
-## Capture performance baselines
+In **Terminal 3**, use the same application-state identifier and request options. Replace `OPTIMIZED_TOKEN` with the new capture preview's token.
 
-Choose **Session and insights → Save passive baseline** or run `autotuner baseline --config YOUR_CONFIG --window 300 --output baseline.json`. The running proxy supplies rolling latency, throughput, errors, upstream measurements, cache suitability, resource counters and advisory findings. The baseline file includes the session and configuration identity, tool versions and client source hash. Read the saved JSON for the evidence and each finding's recommended next step.
+```bat
+autotuner baseline --config tmp\beta-review\adaptive.json --stage optimized --output tmp\beta-review\after.json --get /api/products --environment local --requests 8 --warmup 5 --app-state demo-seed-v1 --json
+autotuner baseline --config tmp\beta-review\adaptive.json --stage optimized --output tmp\beta-review\after.json --get /api/products --environment local --requests 8 --warmup 5 --app-state demo-seed-v1 --apply OPTIMIZED_TOKEN --json
+autotuner compare tmp\beta-review\before.json tmp\beta-review\after.json --output tmp\beta-review\comparison.json
+autotuner monitor --config tmp\beta-review\adaptive.json --output tmp\beta-review\monitor.json
+autotuner menu --project tmp\beta-review --config adaptive.json
+```
 
-For a controlled read, add `--get /api/products --environment local --requests 10` and use a new output filename. Use a concrete path with test data and verify that repeating the GET is appropriate for your API. The preview shows the chosen upstream and workload limits. Repeat with `--apply` and the printed review token to start. The workload runs sequentially in observe or off mode and expects HTTP 200. It stops on the first failed request. Ctrl+C requests a stop after the current request. Existing baseline files are preserved.
+The demo can run below the adaptive activation threshold. The capture reports the observed hit count and both latency distributions. In the menu, choose **Session and insights**, then **Open live monitor**. Use tabs to switch among endpoints, cache, findings and resources. Filter with **/**, scroll with **↑/↓** or **j/k**, pause with **Space**, refresh with **r**, choose the refresh interval with **i**, and return with **q**.
 
-Saved scenario timings describe the proxy-side workload. Rolling observations may include concurrent traffic and are sampled separately. Check the sample counts and incomplete evidence markers before comparing results. The resource section reports runtime task and request counters, cache accounting and storage state.
+To verify rollback, exit the menu and run the following in Terminal 3. Replace `ROLLBACK_TOKEN` with the token printed by the first command.
 
-## Scripts and interruption
+```bat
+autotuner optimize rollback --config tmp\beta-review\adaptive.json --output tmp\beta-review\restored.json --json
+autotuner optimize rollback --config tmp\beta-review\adaptive.json --output tmp\beta-review\restored.json --apply ROLLBACK_TOKEN --json
+```
 
-`autotuner menu --json` prints available actions and effects without prompting. `autotuner --no-input status --config menu-review.local.json --json` uses an existing scripted command. Place global --no-input before a command; it may also follow menu.
+Press **Ctrl+C** in Terminal 2 and restart it with `autotuner serve --config tmp\beta-review\restored.json`. In Terminal 3, run `curl.exe -i http://127.0.0.1:8080/api/products` and verify `x-autotuner-cache-reason: mode_observe`. Stop Terminal 2 and then Terminal 1 with **Ctrl+C**.
 
-Bare autotuner prints help when either input or output is redirected. Explicit menu entry requires interactive input and output, unless --json is used; --no-input rejects interactive menu entry. Successful JSON descriptions contain no prompts or terminal formatting. Errors go to stderr.
+On Linux and macOS, use your checkout path, `source .venv/bin/activate`, and `curl`. Write the same OpenAPI JSON using your shell's file redirection.
 
-EOF closes the menu with exit 0. Ctrl+C at a prompt exits 130. Foreground serve retains its existing graceful-stop behavior and returns to the menu when launched there. No application process is started on menu entry, and a failed action is not retried automatically.
+## Use your own API
 
-Keep listeners local. Current adaptive tuning concerns explicitly approved response-cache policies; it does not modify application/database code or automatically discover APIs. Fast reads can correctly remain uncached.
+- **Discovery.** Select **Discover and set up this project** or run `autotuner discover --project .`. Select observed operations by ID and start the API using its usual command. An explicit `--openapi-url` fetches a live OpenAPI description from a loopback IP. Static candidates can omit mounted routers, dynamic endpoints or generated routes.
+- **Analysis.** Use `autotuner insights --config FILE --json` or save a passive snapshot with `autotuner baseline --config FILE --output FILE.json`. Use a concrete GET with test data for active runs. Active runs are sequential, stop on failed responses, and allow up to 20 requests including warmup. Ctrl+C requests a stop after the current request.
+- **Policy.** Approve only responses that are public across callers and safe for the reviewed TTL and variant rules. Include all relevant write dependencies. Configured writes are included conservatively, and `--invalidate METHOD PATH` adds dependencies. Use `--read-only` for resources with no dependent writes. Writes made outside the proxy rely on origin freshness and TTL. Cache failure handling can deactivate a rule until there is fresh, successful evidence.
+- **Pause or restore.** Use `optimize pause` for recommendation mode, `optimize disable` to turn caching off, and `optimize rollback` to restore the preceding policy. Each action previews an immutable revision and takes effect on restarting the proxy with that file. Keep revision files in the project so you can inspect the history. The existing `cache clear` command evicts live entries.
+- **Matching and privacy.** Keep route, environment, warmup, request count, pacing, timeout, proxy source, transport configuration and application/data revision the same. Matched captures compare SHA-256 fingerprints of the measured response bytes and can reject changing content. Use non-sensitive public test data. Capture JSON retains fingerprints, normalized operations and counters. Compare reports summarize latency, throughput and cache hits. Rolling observations can include unrelated traffic and have separate sampling indicators.
+- **Export.** `autotuner monitor --once --json` returns a machine-readable snapshot. Use `--output FILE` to save it. `autotuner compare` supports the same export option. `autotuner sessions` lists retained sessions. `autotuner report --format json` retains tuning decisions and `--format csv` exports route metrics. Use `--live` to request a checkpoint from the running proxy.
+
+## Troubleshooting
+
+| Symptom | What to check |
+| --- | --- |
+| Cannot reach proxy | Start `autotuner serve --config FILE` in another terminal and leave it running. Use the same configuration for CLI commands. |
+| Upstream failure | Start the upstream and verify its listener with `autotuner doctor --config FILE --connect`. |
+| Cache never serves | Check `autotuner cache explain PATH --config FILE --json` for training, privacy, freshness or mutation reasons. |
+| Preview was rejected | Repeat the preview after edits and apply the current token to the same target file. An existing output needs a new filename. |
+| Comparison exits 3 | Inspect the reason codes. Capture a fresh pair with matching options and stable response data. |
+| Monitor is plain or truncated | Widen the terminal, check its font/ANSI support, or use `--once --json` for machine-readable output. |

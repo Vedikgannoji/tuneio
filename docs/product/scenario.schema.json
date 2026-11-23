@@ -58,6 +58,11 @@
           "title": "Include Response",
           "type": "boolean"
         },
+        "fingerprint_response": {
+          "default": false,
+          "title": "Fingerprint Response",
+          "type": "boolean"
+        },
         "timeout_seconds": {
           "default": 30,
           "maximum": 120,

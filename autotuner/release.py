@@ -1,44 +1,21 @@
 """Offline, fail-closed candidate review. Local receipts are maintainer attestations."""
 import hashlib
 import json
-import math
 from pathlib import Path
 
 from ._version import __version__
+from .artifacts import read_json
 from .benchmarking import source_hashes
 
 QUALIFICATION_GATES = ('correctness', 'telemetry_health', 'shutdown', 'repeated_read_benefit',
     'observe_median_overhead', 'observe_p95_overhead', 'offered_rate',
     'reference_environment', 'idle_memory', 'cache_budget')
 MATRIX = {(os, version) for os in ('linux', 'windows', 'macos') for version in ('3.11', '3.12', '3.13')}
-
-
-def read_json(path, limit):
-    with path.open('rb') as handle:
-        raw = handle.read(limit + 1)
-    if len(raw) > limit:
-        raise ValueError('Evidence exceeds size limit')
-    def unique_object(pairs):
-        result = {}
-        for key, item in pairs:
-            if key in result:
-                raise ValueError('Duplicate evidence field')
-            result[key] = item
-        return result
-    def reject_constant(value):
-        raise ValueError('Non-finite evidence number')
-    def finite_float(value):
-        number = float(value)
-        if not math.isfinite(number):
-            raise ValueError('Non-finite evidence number')
-        return number
-    try:
-        value = json.loads(raw, object_pairs_hook=unique_object, parse_constant=reject_constant, parse_float=finite_float)
-    except RecursionError:
-        raise ValueError('Evidence nesting exceeds parser limits') from None
-    if not isinstance(value, dict):
-        raise ValueError('Evidence must be an object')
-    return value, raw
+REVIEW_FLAGS = (
+    'license_owner_approved', 'license_file_and_metadata_reviewed', 'publisher_identity_confirmed',
+    'wheel_and_sdist_reviewed', 'pilot_integrations_reviewed', 'installer_lifecycle_reviewed',
+    'terminal_budgets_reviewed', 'testpypi_artifact_verified',
+)
 
 
 def assess(path):
@@ -108,8 +85,7 @@ def assess(path):
                   and row.get('pytest') is True and row.get('node') is True
                   and row.get('core_coverage') is True and row.get('clean_wheel_install') is True}
         if not MATRIX.issubset(passed): blockers.append('compatibility_matrix')
-        for name in ('license_owner_approved', 'license_file_and_metadata_reviewed',
-                     'publisher_identity_confirmed', 'wheel_and_sdist_reviewed', 'pilot_integrations_reviewed'):
+        for name in REVIEW_FLAGS:
             if receipt.get(name) is not True: blockers.append(name)
     return dict(schema_version=1, version=__version__, source_digest=digest,
                 ready=not blockers, publication_performed=False, blockers=blockers,

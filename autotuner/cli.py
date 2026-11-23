@@ -58,6 +58,7 @@ def parser():
     menu.add_argument('--project',default='.',help='Project directory; no discovery or startup on entry')
     menu.add_argument('--config',default=None)
     menu.add_argument('--json',action='store_true',help='Describe available menu actions without prompting')
+    menu.add_argument('--plain',action='store_true',help='Use line prompts without drawing a screen')
     menu.add_argument('--no-input',action='store_true',default=argparse.SUPPRESS)
     for name, description in (
         ('discover', 'List FastAPI route candidates or read an OpenAPI description'),
@@ -109,6 +110,35 @@ def parser():
     baseline.add_argument('--delay-ms', type=int, default=100)
     baseline.add_argument('--timeout', type=int, default=3, help='Active per-request timeout in seconds')
     baseline.add_argument('--apply', metavar='REVIEW_TOKEN', help='Run the exact previewed active workload')
+    baseline.add_argument('--stage', choices=('baseline','optimized'), default='baseline')
+    baseline.add_argument('--app-state', help='Application build and test-data revision for a matched capture')
+    baseline.add_argument('--warmup', type=int, default=0, help='Unmeasured GETs within the 20-request total budget')
+    compare = commands.add_parser('compare', help='Compare two matched active captures')
+    compare.add_argument('before')
+    compare.add_argument('after')
+    compare.add_argument('--output', help='Write a new comparison JSON file')
+    compare.add_argument('--json', action='store_true')
+    monitor = commands.add_parser('monitor', help='Open the live terminal monitor or print one snapshot')
+    monitor.add_argument('--once', action='store_true')
+    monitor.add_argument('--plain', action='store_true')
+    monitor.add_argument('--window', type=int, default=60)
+    monitor.add_argument('--interval', type=int, choices=(1, 2, 5, 10), default=2)
+    monitor.add_argument('--filter', default='', metavar='TEXT')
+    monitor.add_argument('--output', help='Write one monitor snapshot to a new JSON file')
+    optimize = commands.add_parser('optimize', help='Review, save or roll back a proxy policy revision')
+    actions = optimize.add_subparsers(dest='action', required=True)
+    policy_commands = []
+    for name in ('inspect', 'enable', 'pause', 'disable', 'rollback'):
+        action = actions.add_parser(name)
+        policy_commands.append(action)
+        if name != 'inspect':
+            action.add_argument('--output', required=True, help='New revision JSON file')
+            action.add_argument('--apply', metavar='REVIEW_TOKEN', help='Save the previewed revision')
+        if name == 'enable':
+            action.add_argument('--route', required=True, help='Exact GET pattern from the selected configuration')
+            action.add_argument('--invalidate', nargs=2, action='append', default=[], metavar=('METHOD', 'PATH'))
+            action.add_argument('--read-only', action='store_true', help='Attest that the resource has no dependent writes')
+            action.add_argument('--baseline', help='Include route evidence from a matching baseline JSON')
     sessions = commands.add_parser('sessions', help='List retained sessions, including after shutdown')
     report_command = commands.add_parser('report', help='Export retained endpoint telemetry')
     for sub in (sessions, report_command):
@@ -141,7 +171,7 @@ def parser():
     benchmark.add_argument('--format',choices=['json','csv'],default='json')
     benchmark.add_argument('--output',required=True)
     benchmark.add_argument('--force',action='store_true')
-    for sub in (check, serve, doctor, status, endpoints, insights, sessions, report_command, explain, clear, dashboard, preview, run, baseline):
+    for sub in (check, serve, doctor, status, endpoints, insights, sessions, report_command, explain, clear, dashboard, preview, run, baseline, monitor, *policy_commands):
         sub.add_argument('--config', default=None)
         sub.add_argument('--upstream', default=None)
         sub.add_argument('--listen', default=None)
@@ -155,17 +185,17 @@ def config_path(args):
 
 
 def resolved_config(args):
-    from .product_config import ProductConfig
+    from .product_config import ProductConfig, config_document, resolve_storage
     path = config_path(args)
     try:
-        contents = path.read_text(encoding='utf-8')
+        data, args.policy_revision = config_document(path)
     except FileNotFoundError:
         raise MissingConfiguration(
             f'Configuration file not found: {str(path)!r}. '
             'Create it with autotuner init or select an existing file with --config. '
             'In the menu, use Setup > Create observe configuration or c to select a config.'
         ) from None
-    data = json.loads(contents)
+    data = dict(data)
     if not isinstance(data, dict):
         raise ValueError('Configuration must be a JSON object')
     for name in ('upstream', 'listen', 'mode'):
@@ -174,11 +204,7 @@ def resolved_config(args):
             value = os.environ.get('AUTOTUNER_' + name.upper())
         if value is not None:
             data[name] = value
-    config = ProductConfig.model_validate(data)
-    storage_path = Path(config.metrics.storage_path)
-    if not storage_path.is_absolute():
-        config.metrics.storage_path = str((config_path(args).resolve().parent / storage_path).resolve())
-    return config
+    return resolve_storage(ProductConfig.model_validate(data), config_path(args))
 
 
 def emit(value, as_json):
@@ -194,14 +220,17 @@ def supports(data, capability):
     return type(milestone) is int and {'proxy':3,'dashboard':9}[capability]<=milestone<=11
 
 
-def local_json(config,method,path,payload=None):
+def local_json(config,method,path,payload=None,*,timeout=10):
     data=json.dumps(payload).encode() if payload is not None else None
     request=urllib.request.Request('http://'+config.listen+path,data=data,method=method,
                                   headers={'Content-Type':'application/json'} if data is not None else {})
     opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())
-    with control_open(opener,request,config.listen,10) as response:
-        try:result=json.load(response)
-        except ValueError:raise ControlError('Invalid local control JSON') from None
+    with control_open(opener,request,config.listen,timeout) as response:
+        raw = response.read(16 * 1024 * 1024 + 1)
+        if len(raw) > 16 * 1024 * 1024:
+            raise ControlError('Local control response exceeds the supported size')
+        try:result=json.loads(raw)
+        except (ValueError, RecursionError):raise ControlError('Invalid local control JSON') from None
     if not isinstance(result,dict) or result.get('schema_version')!=1:raise ControlError('Incompatible local control response')
     return result
 
@@ -217,7 +246,7 @@ def main(argv=None):
         return run(invoke=main)
     if args.command=='menu':
         from .terminal import run
-        return run(invoke=main,project=args.project,config=args.config,as_json=args.json,no_input=args.no_input)
+        return run(invoke=main,project=args.project,config=args.config,as_json=args.json,no_input=args.no_input,plain=args.plain)
     # Help, version and menu entry do not import the proxy, database or HTTP client.
     from pydantic import ValidationError
     from .product_config import ProductConfig
@@ -286,6 +315,14 @@ def main(argv=None):
             result=assess(Path(args.evidence))
             emit(result,args.json)
             return 0 if result['ready'] else 3
+        if args.command == 'compare':
+            from .comparison import compare_files, display_comparison
+            result = compare_files(args.before, args.after, args.output)
+            if args.json:
+                emit(result, True)
+            else:
+                print(display_comparison(result))
+            return 0 if result['comparable'] else 3
         if args.command == 'init':
             config = ProductConfig(upstream=args.upstream or os.environ.get('AUTOTUNER_UPSTREAM', 'http://127.0.0.1:3000'))
             path = config_path(args)
@@ -318,6 +355,32 @@ def main(argv=None):
             print('Benchmark report: '+str(output)+'; qualification requires review of all gates.',file=sys.stderr)
             return exit_code(data,args.require_gates)
         config = resolved_config(args)
+        if args.command == 'monitor':
+            from .monitor import run
+            if not 1 <= args.window <= 3600 or len(args.filter) > 1024:
+                raise ValueError('Invalid monitor window or filter')
+            identity, _ = config_identity(config)
+            def fetch(window):
+                result = local_json(config, 'GET', f'/_autotuner/monitor?window={window}', timeout=1)
+                status = result.get('status')
+                if not isinstance(status, dict) or status.get('config_digest') != identity or status.get('running') is not True:
+                    raise ControlError('Start the proxy with the selected configuration to monitor it')
+                return result
+            if args.no_input:
+                args.once = True
+            return run(fetch, args, (OSError,))
+        if args.command == 'optimize':
+            from .optimization import review
+            try:
+                result = review(args, config, args.policy_revision)
+            except FileExistsError:
+                print('Revision already exists. Choose a new output filename.', file=sys.stderr)
+                return 2
+            except ValueError as exc:
+                print(ascii(str(exc)), file=sys.stderr)
+                return 2
+            emit(result, args.json)
+            return 0
         if args.command == 'baseline':
             from .baseline import capture
 
@@ -481,7 +544,7 @@ def main(argv=None):
             logging.basicConfig(level=logging.INFO, stream=sys.stderr)
             logging.getLogger('httpx').setLevel(logging.WARNING)
             logging.getLogger('httpcore').setLevel(logging.WARNING)
-            print('Dashboard: http://'+config.listen+'/_autotuner/dashboard',file=sys.stderr)
+            print('Open the terminal monitor with autotuner monitor using this configuration.',file=sys.stderr)
             uvicorn.run(ControlSession(config), host=host.strip('[]'), port=int(port),
                         log_config=None, access_log=False, server_header=False, date_header=False, timeout_graceful_shutdown=args.shutdown_timeout)
         return 0

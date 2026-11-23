@@ -14,13 +14,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: python -m pip install -e ".[test,benchmark,release]"
+      - uses: astral-sh/setup-uv@v6
+      - run: python -m pip install -e ".[test,benchmark,release]" pipx
       - run: python -m pytest
       - run: python -m autotuner.quality coverage.json
       - run: node --test tests/workflow.test.cjs tests/product_ui.test.cjs
       - run: python -m build
       - run: python -m twine check dist/*
       - run: python scripts/smoke_wheel.py dist
+      - name: Verify pip, pipx and uv CLI installs
+        shell: bash
+        run: python scripts/smoke_installers.py dist/*.whl
+      - run: python scripts/measure_startup.py > dist/STARTUP-TRIALS.json
       - name: Hash release artifacts
         run: python -c "from pathlib import Path; import hashlib; root=Path('dist'); files=sorted(p for p in root.iterdir() if p.suffix in ('.whl','.gz')); (root/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in files),encoding='utf-8')"
       - uses: actions/upload-artifact@v4

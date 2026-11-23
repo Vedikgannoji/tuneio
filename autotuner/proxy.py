@@ -4,6 +4,7 @@ from http.cookiejar import CookieJar, DefaultCookiePolicy
 import json
 import hashlib
 import hmac
+import re
 import secrets
 from time import perf_counter
 from email.utils import formatdate
@@ -16,6 +17,7 @@ from .response_cache import ResponseCache, request_reason, representation_key
 HOP_HEADERS = {b'connection', b'keep-alive', b'proxy-connection', b'proxy-authenticate',
                b'proxy-authorization', b'te', b'trailer', b'transfer-encoding', b'upgrade'}
 METHODS = {'GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'}
+ADVISORY_FRESHNESS = re.compile(r'(?:s-maxage|max-age)=[0-9]{1,10}')
 
 
 class IncompleteResponse(RuntimeError):
@@ -52,7 +54,11 @@ def cache_review_reason(method, headers, response):
         return 'response_status'
     if 'set-cookie' in response.headers:
         return 'set_cookie'
-    if 'cache-control' in response.headers or 'pragma' in response.headers:
+    directives = [item.strip().lower() for value in response.headers.get_list('cache-control')
+                  for item in value.split(',')]
+    names = [item.split('=',1)[0] for item in directives]
+    if ('pragma' in response.headers or len(names) != len(set(names))
+            or any(item != 'public' and not ADVISORY_FRESHNESS.fullmatch(item) for item in directives)):
         return 'response_directives'
     vary = {part.strip().lower() for part in response.headers.get('vary', '').split(',') if part.strip()}
     if vary - {'accept', 'accept-encoding'}:

@@ -1,98 +1,49 @@
 # API Performance Auto Tuner
 
-Local API monitoring, performance insights and adaptive response caching. **The current development snapshot is 2.1.0.dev0. Full performance qualification and package-registry publication remain pending.**
+Autotuner is a terminal-first tool for observing HTTP APIs and applying reviewed adaptive caching. Discover FastAPI candidates or import OpenAPI, capture a baseline, approve a cache policy, and compare it with a matched run. Autotuner 2.1.0b1 is a developer beta candidate.
 
-Observe latency, throughput, errors and queueing. Opt into fixed or adaptive response caching with route rules and dependent-write invalidation. Inspect policy decisions, execute ordered API scenarios and export bounded persistent telemetry.
+## Install a local wheel
 
-Discover FastAPI route candidates or import OpenAPI operations, then review an observe configuration for your upstream. The terminal workspace provides configuration, session insights and cache controls. Guided optimization and live terminal comparisons are planned. See the [preview release notes](docs/release/v2.0.0b2.md).
+Use Python 3.11, 3.12 or 3.13 and a wheel from this project.
 
-## Install from source
+| Installer | Command |
+| --- | --- |
+| pip in an activated virtual environment | `python -m pip install PATH_TO_WHEEL` |
+| pipx | `pipx install PATH_TO_WHEEL` |
+| uv | `uv tool install PATH_TO_WHEEL` |
 
-Python 3.11–3.13 is the target range; the hosted OS/Python matrix still requires execution. Windows Command Prompt:
+Run `autotuner --version`, then start `autotuner` from your project. For a source checkout, install with `python -m pip install -e .`. Use the wheel's path until a registry release is verified and announced.
 
-```bat
-cd /d E:\API-Performance-Auto-Tuner
-python -m venv .venv
-.venv\Scripts\activate
+## Work in the terminal
+
+The workspace has a purple pixel-art title, highlighted selections, and arrow-key and number navigation. Use **Enter** to open a selection, **b** to go back, **h** for help and **q** to quit. If your terminal needs line prompts, use `autotuner menu --plain`. The CLI uses your terminal's font. Cascadia Mono and JetBrains Mono render the block characters clearly.
+
+1. In **Setup and configuration**, discover operations and save a reviewed observe configuration. Start your API with its usual command, then run `autotuner serve --config autotuner.json` in another terminal.
+2. In **Session and insights**, inspect traffic, save a baseline, or open the live monitor. Switch monitor views with **Tab** or arrow keys and use **/** to filter, **Space** to pause, **r** to refresh, and **i** to change the refresh interval.
+3. In **Cache and policies**, review a public GET rule and its dependent writes. Saving an approval creates a new config revision. Restart the proxy with that revision. The same menu provides pause, disable and rollback.
+4. In **Reports and history**, compare matched reads or export JSON. Scriptable commands expose the same actions.
+
+The [terminal guide](docs/TERMINAL_GUIDE.md) includes the complete disposable demo, matched capture walkthrough and command reference. For the original demo and optional browser interface, see the [demo guide](README_DEMO.md).
+
+## Supported deployment
+
+- A single-worker loopback HTTP/1.x proxy for finite requests. Point clients at the proxy to measure their traffic.
+- Adaptive response caching for reviewed public GETs. HTTP freshness, request variants, credential bypass, memory limits and declared write invalidation govern cache serving.
+- Static FastAPI discovery covers literal decorators on direct apps and simple factories. Use OpenAPI for assembled routers and dynamic routes, or configure operations manually.
+- Tuning uses measured origin latency and reuse to activate caching and adjust TTL. Admission and concurrency limits are configured. Concurrency findings are advisory.
+- Telemetry stays local in bounded SQLite storage. Keep the proxy on a trusted machine and avoid exposing its management interface to untrusted clients.
+
+## Develop and qualify
+
+```
 python -m pip install -e ".[test,benchmark,release]"
-autotuner --version
-```
-
-For a built wheel, use `python -m pip install path-to-wheel.whl` in a virtual environment, or `pipx install path-to-wheel.whl` for an isolated CLI. uv is optional. Registry availability and publisher ownership are not yet verified; do not install a similarly named registry package assuming it is ours.
-
-## Try it in three terminals
-
-For keyboard-operated configuration, session insights, cache controls and exports, run `autotuner` in a terminal or `autotuner menu --project .`. Select a number or letter and press Enter. Use **b** to go back, **q** to quit and **h** for help. Opening the workspace stays offline and does not scan or modify your project.
-
-Choose **Setup and configuration → Discover project API operations** to inspect the selected project. Start the proxy separately for session actions, as shown below. Browser use is optional. See the [terminal guide](docs/TERMINAL_GUIDE.md).
-
-Scripts can use `autotuner menu --json` to list available actions without prompts. Bare `autotuner` prints help when input or output is redirected; explicit interactive entry requires terminal input and output. Use `autotuner --no-input COMMAND ...` to make non-interactive intent explicit.
-
-Terminal 1 — disposable RAM upstream, resets on restart. Keep running:
-
-```bat
-cd /d E:\API-Performance-Auto-Tuner
-.venv\Scripts\activate
-autotuner demo --listen 127.0.0.1:3000
-```
-
-Terminal 2 — observe-only proxy. Keep running:
-
-```bat
-cd /d E:\API-Performance-Auto-Tuner
-.venv\Scripts\activate
-autotuner init --config beta.local.json --upstream http://127.0.0.1:3000
-autotuner serve --config beta.local.json
-```
-
-If beta.local.json already exists, reuse it and skip init. Overwrite only deliberately with `--force`.
-
-Terminal 3 — traffic and monitoring:
-
-```bat
-cd /d E:\API-Performance-Auto-Tuner
-.venv\Scripts\activate
-curl.exe -i http://127.0.0.1:8080/api/products
-autotuner status --config beta.local.json --json
-autotuner dashboard --config beta.local.json
-autotuner insights --config beta.local.json --json
-```
-
-Stop terminals 1 and 2 with Ctrl+C after testing. The dashboard is at http://127.0.0.1:8080/_autotuner/dashboard. The original application on port 8000 is separate: [demo guide](README_DEMO.md).
-
-## Review adaptive caching
-
-Stop terminal 2 with Ctrl+C, then run `autotuner serve --config examples/adaptive-demo.json` there. Keep terminal 1 running. In terminal 3:
-
-```bat
-for /L %i in (1,1,8) do @curl.exe -s -o NUL http://127.0.0.1:8080/api/products
-autotuner cache explain /api/products --config examples/adaptive-demo.json --json
-autotuner dashboard --config examples/adaptive-demo.json
-```
-
-Preview the mutation/invalidation scenario and acknowledge its writes before running. Fast origins can correctly remain uncached. For your own API, approve routes and invalidation dependencies explicitly; demo rules are examples.
-
-## Product boundaries
-
-- One local worker, loopback listener, finite HTTP requests; no WebSockets or distributed cache.
-- Observe mode does not serve cached responses. Adaptive mode adjusts approved cache policies, not application code or database indexes.
-- Credentials, private/no-store responses and unsupported semantics bypass shared caching. Configure write invalidation for all dependencies.
-- SQLite retention, queues and memory are bounded; exports disclose sampling loss.
-- Management has no mandatory token. Keep it local and do not expose it to untrusted clients.
-- Qualification remains incomplete: reference-host overhead, current-source 30-minute soak, hosted compatibility CI and external pilot review are pending. Historical workload improvements are not universal guarantees.
-
-## Develop
-
-```bat
 python -m pytest
 python -m autotuner.quality coverage.json
-node --test tests/workflow.test.cjs tests/product_ui.test.cjs
 python -m build
 python -m twine check dist/*
 python scripts/smoke_wheel.py dist
-autotuner release check --evidence docs/release/candidate.json --json
 ```
 
-Keep dist limited to one wheel. The pending release check deliberately exits **3**. Node is needed for JavaScript checks. In the managed Windows sandbox only, use `python scripts/test_socketless.py` instead of pytest; it does not qualify real TCP.
+The optional browser UI checks use `node --test tests/workflow.test.cjs tests/product_ui.test.cjs`. The managed Windows sandbox can use `python scripts/test_socketless.py` for in-process tests. The installed-wheel journey and performance qualification require real loopback HTTP.
 
-See [contributing](CONTRIBUTING.md), [security](SECURITY.md) and [changelog](CHANGELOG.md). License and publisher identity await owner approval; no license grant or public package availability is implied.
+See the [candidate checklist](docs/release/DEVELOPER_BETA.md), [contributing guide](CONTRIBUTING.md), [security policy](SECURITY.md), and [changelog](CHANGELOG.md).

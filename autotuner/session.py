@@ -5,7 +5,7 @@ import uuid
 from urllib.parse import parse_qs
 
 from .proxy import ObservationProxy, json_response
-from .storage import TelemetryStorage, StorageUnavailable
+from .storage import TelemetryStorage, StorageUnavailable, source_digest
 from .core.insights import analyze
 from .response_cache import effective_mode
 from .console import Console
@@ -37,7 +37,7 @@ class ControlSession:
         try:active_tasks=len(asyncio.all_tasks())
         except RuntimeError:active_tasks=None
         return dict(schema_version=1, session_id=self.session_id, tool_version=__version__, config_digest=self.storage.digest,
-                    capabilities=['proxy','dashboard','scenarios','insights','cache','reports'],
+                    source_sha256=source_digest(), capabilities=['proxy','dashboard','scenarios','insights','cache','reports','monitor'],
                     uptime_seconds=max(0,perf_counter()-self.started_monotonic),
                     runtime=dict(in_flight=self.proxy.in_flight,hot_reads=self.proxy.hot_reads,active_tasks=active_tasks),
                     mode=self.config.mode, effective_mode=effective_mode(self.config), running=self.running,
@@ -94,13 +94,15 @@ class ControlSession:
                     if path.endswith('/sessions'):
                         result = dict(schema_version=1, sessions=result)
                     return await json_response(send, 200, result)
-                if path in ('/_autotuner/metrics', '/_autotuner/insights'):
+                if path in ('/_autotuner/metrics', '/_autotuner/insights', '/_autotuner/monitor'):
                     try:
                         window = int(parse_qs(scope.get('query_string', b'').decode()).get('window', ['300' if path.endswith('/insights') else '60'])[-1])
                         if not 1 <= window <= 3600:
                             raise ValueError()
                     except (ValueError, UnicodeError):
                         return await json_response(send, 400, {'detail': 'Window must be 1-3600 seconds'})
+                    if path.endswith('/monitor'):
+                        return await json_response(send, 200, self.console.monitor(window))
                     if path.endswith('/insights'):
                         result = analyze(self.config, self.proxy.metrics, self.proxy.upstream_metrics,
                                          transport=self.proxy.counters, storage=self.storage.health(), window=window)
