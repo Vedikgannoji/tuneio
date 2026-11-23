@@ -6,14 +6,14 @@ on:
       tag:
         description: Existing GitHub release tag
         required: true
-        default: v2.1.0b3
+        default: v2.1.0
       registry:
         description: Upload destination
         required: true
         type: choice
         options:
-          - testpypi
           - pypi
+          - testpypi
 
 permissions:
   contents: read

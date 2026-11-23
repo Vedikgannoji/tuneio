@@ -18,13 +18,13 @@ For the first release, open **Publishing** in your TestPyPI account settings and
 | Workflow filename | `publish.yml` | `publish.yml` |
 | Environment name | `testpypi` | `pypi` |
 
-Create the corresponding pending publisher in your PyPI account after the rehearsal. If you already own the project, use the project's **Manage > Publishing** settings. Registry ownership and name availability are determined by each registry. Trusted Publishing authenticates the workflow through GitHub OIDC.
+For direct production publication, configure the PyPI publisher first using the PyPI column. If you already own the project, use the project's **Manage > Publishing** settings. Registry ownership and name availability are determined by each registry. Trusted Publishing authenticates the workflow through GitHub OIDC.
 
-## Rehearse the upload
+## Optional TestPyPI rehearsal
 
-Commit and push the publishing changes to `main`. Create tag `v2.1.0b3` on that commit and attach the new 2.1.0b3 wheel and source archive to its GitHub prerelease. The new version includes the MIT license. Use a new version if an earlier artifact with that version has already been uploaded to the destination.
+Commit and push the publishing changes to `main`. Create tag `v2.1.0` on that commit and attach the new 2.1.0 wheel and source archive to its GitHub release. The new version includes the MIT license. Use a new version if an earlier artifact with that version has already been uploaded to the destination.
 
-In GitHub **Actions > Publish tuneio > Run workflow**, choose branch `main`, tag `v2.1.0b3`, and registry `testpypi`. Wait for both jobs to finish. Open https://test.pypi.org/project/tuneio/2.1.0b3/ and inspect the version and files.
+In GitHub **Actions > Publish tuneio > Run workflow**, choose branch `main`, tag `v2.1.0`, and registry `testpypi`. Wait for both jobs to finish. Open https://test.pypi.org/project/tuneio/2.1.0/ and inspect the version and files.
 
 Run the following in a new Command Prompt to verify the TestPyPI package in a separate environment. Dependencies are installed from PyPI, followed by the exact tuneio wheel from TestPyPI. A fresh environment directory is required.
 
@@ -33,7 +33,7 @@ cd /d E:\API-Performance-Auto-Tuner
 python -m venv tmp\tuneio-testpypi-check
 tmp\tuneio-testpypi-check\Scripts\activate
 python -m pip install "fastapi>=0.104.1,<1" "uvicorn>=0.24,<1" "pydantic>=2.5,<3" "httpx>=0.27,<1"
-python -m pip install --index-url https://test.pypi.org/simple/ --no-deps --only-binary=:all: "tuneio==2.1.0b3"
+python -m pip install --index-url https://test.pypi.org/simple/ --no-deps --only-binary=:all: "tuneio==2.1.0"
 cd /d %TEMP%
 tuneio --version
 tuneio menu --json
@@ -41,20 +41,20 @@ tuneio --help
 deactivate
 ```
 
-## Publish to PyPI
+## Publish directly to PyPI
 
-Finish the PyPI publisher setup with environment `pypi`. Run the same GitHub workflow from `main` with the same tag and destination `pypi`. Approve the environment deployment if configured. This publishes the GitHub release distributions validated in that run.
+For direct publication, complete the PyPI publisher setup with environment `pypi`. TestPyPI is optional. Run the same GitHub workflow from `main` with the same tag and destination `pypi`. Approve the environment deployment if configured. This publishes the GitHub release distributions validated in that run.
 
-Verify https://pypi.org/project/tuneio/2.1.0b3/ and install the exact beta in a fresh environment. All users can then choose one installer.
+Verify https://pypi.org/project/tuneio/2.1.0/ and install the exact release in a fresh environment. All users can then choose one installer.
 
 ```sh
-python -m pip install "tuneio==2.1.0b3"
-pipx install "tuneio==2.1.0b3"
-uv tool install "tuneio==2.1.0b3"
+python -m pip install "tuneio==2.1.0"
+pipx install "tuneio==2.1.0"
+uv tool install "tuneio==2.1.0"
 ```
 
 Run `tuneio --version` and `tuneio` after installing. The Python distribution currently supports Python 3.11 through 3.13. Follow the terminal guide for API setup and traffic capture.
 
 ## Current release decisions
 
-The owner selected the MIT license. The license file and distribution metadata are included in version 2.1.0b3. The separate candidate checker tracks qualification, soak and reviewer evidence. Its status should accompany beta readiness claims.
+The owner selected the MIT license. The license file and distribution metadata are included in version 2.1.0. The separate candidate checker tracks qualification, soak and reviewer evidence. Its status should accompany release readiness claims.

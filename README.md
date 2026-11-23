@@ -1,6 +1,6 @@
 # tuneio
 
-tuneio is a terminal-first tool for observing HTTP APIs and applying reviewed adaptive caching. Discover FastAPI candidates or import OpenAPI, capture a baseline, approve a cache policy, and compare it with a matched run. tuneio 2.1.0b3 is a developer beta candidate.
+tuneio is a terminal-first tool for observing HTTP APIs and applying reviewed adaptive caching. Discover FastAPI candidates or import OpenAPI, capture a baseline, approve a cache policy, and compare it with a matched run. tuneio 2.1.0 is distributed under the MIT license.
 
 ## Install a local wheel
 
@@ -14,7 +14,7 @@ Use Python 3.11, 3.12 or 3.13 and a wheel from this project.
 
 Run `tuneio --version`, then start `tuneio` from your project. For a source checkout, install with `python -m pip install -e .`. Use the wheel's path until a registry release is verified and announced.
 
-After the beta is published to PyPI, install `tuneio` with `python -m pip install --pre tuneio`, `pipx install --pre tuneio`, or `uv tool install --prerelease allow tuneio`. All three install the `tuneio` command.
+After the release is published to PyPI, install `tuneio` with `python -m pip install tuneio`, `pipx install tuneio`, or `uv tool install tuneio`. All three install the `tuneio` command.
 
 ## Work in the terminal
 

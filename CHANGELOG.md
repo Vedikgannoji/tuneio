@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.0 - Stable package version
+
+- Publish tuneio under the MIT license using a stable version identifier.
+- Install with pip, pipx or uv using the package name `tuneio`.
+
 ## 2.1.0b3 - Registry publishing preparation
 
 - Publish under the MIT license.
