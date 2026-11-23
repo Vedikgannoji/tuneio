@@ -116,6 +116,9 @@ class Child:
             self.url='http://127.0.0.1:'+str(message['port'])
         except (Empty,ValueError,TypeError,AttributeError):
             self.close();raise RuntimeError('Isolated benchmark server failed to start; check local socket permissions and package installation') from None
+        except KeyboardInterrupt:
+            self.close()
+            raise
 
     def close(self):
         try:

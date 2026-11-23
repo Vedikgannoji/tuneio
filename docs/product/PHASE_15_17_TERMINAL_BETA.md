@@ -32,3 +32,17 @@ The candidate checker still requires qualification, soak and reviewer proofs. Ow
 - Menu results use summaries for configuration, policy review, metrics and stored telemetry. Export actions retain the full JSON.
 - The focused terminal and developer workflow run passed 76 tests. The full run used `python scripts/test_socketless.py --basetemp tmp/ui-release-tests --junitxml=tmp/ui-release-pytest.xml -ra` and passed 646 tests with 93.10% coverage. The sandbox skipped one symlink test. The core gate passed with 100% statement and branch coverage.
 - Windows pseudoterminal checks exercised rich menu navigation, stored telemetry, monitor tabs with a fixture snapshot, and screen restoration. The rebuilt wheel passed metadata validation and the local isolated-environment smoke using existing dependencies.
+
+## Single-window terminal workflow
+
+- Interactive forms, diagnostics, live monitoring, telemetry, captures and comparisons share the same terminal screen. Reports have scrollable tables and a detailed view. The workspace can launch the demo and start, restart or stop its own proxy. Quitting shuts down processes started by that workspace.
+- The focused suite passed 82 tests. The full `python scripts/test_socketless.py` run passed 652 tests with 91.14% aggregate coverage and one skip for Windows symlink permissions. The separate `python -m autotuner.quality coverage.json` gate passed with 100% statement and branch coverage.
+- The Windows pseudoterminal displayed the stored telemetry summary and detailed view against existing local data. Automated tests covered process ownership and selected proxy listener binding. Real loopback connections returned WinError 10013 in the managed sandbox, so a live demo and proxy session from the menu remains to be verified on an unrestricted Windows terminal.
+- The wheel passed `twine check` and `python scripts/smoke_wheel.py tmp/autotuner-workspace-dist --local-only`. The changed runtime sources in the wheel matched the checkout byte for byte.
+
+## Numbered choices and 2.1.0b2 candidate
+
+- Capture stage, target environment, invalidating HTTP method and approvals use numbered selections. Typed paths, test-data identifiers and request counts retain their editable fields. Approvals default to No. The Windows pseudoterminal displayed the numbered stage and environment screens and preserved text entry for the GET path.
+- `python scripts/test_socketless.py tests/test_terminal.py tests/test_terminal_product.py tests/test_baseline.py -o addopts= --basetemp tmp/options-focus-final` passed 99 tests. `python scripts/test_socketless.py --basetemp tmp/options-suite --junitxml=tmp/options-suite.xml -ra` passed 656 tests with 91.26% combined coverage and one Windows symlink skip. The core quality gate passed with 100% statement and branch coverage. `node --test tests/workflow.test.cjs tests/product_ui.test.cjs` passed 19 checks.
+- The wheel and source distribution passed `twine check`. The installed wheel smoke passed with existing local dependencies. The pip lifecycle check installed 2.1.0b1, upgraded to 2.1.0b2 and uninstalled it in an isolated environment. The offline uv run lacked FastAPI, and pipx was unavailable. The managed sandbox blocks real loopback HTTP. Hosted installer and compatibility checks remain pending.
+- `autotuner release check --evidence docs/release/candidate.json --json` found missing qualification, soak and review-receipt evidence. PyPI publishing access and owner-approved license terms remain unverified.

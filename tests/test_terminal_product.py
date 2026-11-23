@@ -132,10 +132,12 @@ def test_menu_guided_setup_and_policy_revision(tmp_path):
         def isatty(self):
             return True
     out = TTY()
-    # Discover, select route 1, review and write config. Switch to the policy menu and approve a read-only rule.
-    keys = '1\n7\n\n1\n\nbase.json\ny\nb\n3\n4\n/items\n\ny\n\nactive.json\ny\nq\n'
+    # Discover and select route 1, then approve caching with a PATCH invalidation.
+    keys = '1\n7\n\n1\n\nbase.json\n1\nb\n3\n4\n/items\n3\n/items/*\n5\n\nactive.json\n1\nq\n'
     assert terminal.run(project=tmp_path, invoke=cli.main, stdin=TTY(keys), stdout=out) == 0
     assert (tmp_path/'base.json').exists() and (tmp_path/'active.json').exists()
+    rule, = json.loads((tmp_path/'active.json').read_text())['config']['cache']['routes']
+    assert rule['invalidate_on'] == [{'method':'PATCH', 'path':'/items/*'}]
     assert 'for the next proxy start' in out.getvalue()
 
 
@@ -249,14 +251,16 @@ def test_plain_guided_baseline_and_compare_dispatch_arguments(tmp_path):
                 print(json.dumps(dict(review_token='preview',workload=workload)))
         return 0
     invoke = Mock(side_effect=dispatch)
-    keys = '2\n5\noptimized\n/items\napp-v1\nlocal\n8\n4\nafter.json\ny\nb\n4\n5\nbefore.json\nafter.json\nresult.json\nq\n'
+    keys = '2\n5\n9\n2\n/items\napp-v1\n\n8\n4\nafter.json\n1\nb\n4\n5\nbefore.json\nafter.json\nresult.json\nq\n'
     out = TTY()
     assert terminal.run(project=tmp_path, invoke=invoke, stdin=TTY(keys), stdout=out,plain=True)==0
     preview, active, comparison = [item.args[0] for item in invoke.call_args_list]
     assert '--requests=8' in preview and '--warmup=4' in preview
+    assert '--stage=optimized' in preview and '--environment=local' in preview
     assert active[-3:] == ['--apply','preview','--json']
     assert comparison[1:4] == ['compare',str(tmp_path/'before.json'),str(tmp_path/'after.json')]
     assert '4 warmup and 8 measured requests' in out.getvalue()
+    assert 'Choose a listed number.' in out.getvalue()
     assert 'Capture saved' in out.getvalue() and 'review_token' not in out.getvalue()
     assert 'Comparison saved to' in out.getvalue()
 
@@ -280,3 +284,141 @@ def test_menu_show_report_uses_summary_and_keeps_export_action(tmp_path):
     assert 'last committed checkpoint' in out.getvalue() and '"routes"' not in out.getvalue()
     assert invoke.call_args_list[0].args[0][-1] == '--json'
     assert invoke.call_args.args[0][-2:] == ['--output', str(tmp_path/'raw.json')]
+
+
+def test_fullscreen_reports_and_diagnostics_stay_inside_workspace(tmp_path, monkeypatch, capsys):
+    out = io.StringIO()
+    data = dict(effective_mode='observe', session_id='saved-session', started_at='today', routes=[
+        dict(boundary='proxy', method='GET', route='/items', count=8, p95_ms=1.2345, error_rate=0, cache_hits=2)],
+        sampling={}, tuning_decisions=[])
+
+    def invoke(args):
+        assert args[-1] == '--json'
+        print(json.dumps(data))
+        print('Test diagnostic', file=sys.stderr)
+        return 0
+
+    workspace = terminal.Workspace(tmp_path,tmp_path/'base.json',invoke,io.StringIO(),out)
+    workspace.theme.rich = True
+    workspace.keyboard = SimpleNamespace(active=nullcontext, read=Mock(side_effect=['4','2','d','enter','q']))
+    monkeypatch.setattr(terminal,'terminal_size',lambda:(105,25))
+    assert workspace.loop() == 0
+    screen = out.getvalue()
+    assert screen.count('\x1b[?1049h') == screen.count('\x1b[?1049l') == 1
+    assert 'GET /items' in screen and 'P95 ms' in screen and 'Test diagnostic' in screen
+    assert 'DETAILS' in screen and '"routes"' not in screen
+    captured = capsys.readouterr()
+    assert not captured.out and not captured.err
+
+
+def test_fullscreen_form_can_edit_input_and_return_to_menu(tmp_path, monkeypatch):
+    out = io.StringIO()
+    workspace = terminal.Workspace(tmp_path,tmp_path/'base.json',Mock(),io.StringIO(),out)
+    workspace.theme.rich = True
+    workspace.keyboard = SimpleNamespace(active=nullcontext, read=Mock(
+        side_effect=['c','A','b','x','erase','.','j','s','o','n','enter','q']))
+    monkeypatch.setattr(terminal,'terminal_size',lambda:(90,24))
+    assert workspace.loop() == 0
+    assert workspace.config == tmp_path/'Ab.json'
+    assert 'AUTOTUNER / Select config' in out.getvalue()
+
+
+def test_fullscreen_baseline_uses_numbered_choices_and_keeps_path_fields(tmp_path, monkeypatch):
+    from autotuner.terminal_ui import Panel
+
+    out = io.StringIO()
+    workspace = terminal.Workspace(tmp_path, tmp_path/'config.json', Mock(), io.StringIO(), out)
+    workspace.theme.rich = True
+    workspace.panel = Panel('Capture matched GET workload')
+    keys = ['x', '2', *'/items/2', 'enter', *'app-v1', 'enter', 'down', 'enter',
+            'enter', 'enter', *'After Run.json', 'enter']
+    workspace.keyboard = SimpleNamespace(active=nullcontext, read=Mock(side_effect=keys))
+    review = Mock()
+    monkeypatch.setattr(workspace, 'review', review)
+    monkeypatch.setattr(terminal, 'terminal_size', lambda:(95,24))
+    workspace.guided_baseline(['baseline'])
+    review.assert_called_once_with(['baseline', '--stage=optimized', '--get=/items/2', '--app-state=app-v1',
+                                    '--environment=staging', '--requests=10', '--warmup=0',
+                                    '--output='+str(tmp_path/'After Run.json')])
+    screen = out.getvalue()
+    assert all(label in screen for label in ('1  Baseline', '2  Optimized', '1  Local', '2  Staging', '> /items/2'))
+
+
+@pytest.mark.parametrize('key', ('back', 'enter', '2'))
+def test_fullscreen_approval_requires_an_explicit_yes(tmp_path, monkeypatch, key):
+    from autotuner.terminal_ui import Panel
+
+    workspace = terminal.Workspace(tmp_path, tmp_path/'config.json', Mock(), io.StringIO(), io.StringIO())
+    workspace.theme.rich = True
+    workspace.panel = Panel('Approval')
+    workspace.keyboard = SimpleNamespace(active=nullcontext, read=Mock(side_effect=[key, '1']))
+    monkeypatch.setattr(terminal, 'terminal_size', lambda:(80,24))
+    assert not workspace.confirm('Apply preview?')
+    assert workspace.confirm('Apply preview?')
+
+
+def test_table_wrap_preserves_full_cell_at_narrow_width():
+    from autotuner.terminal_ui import Table, cell_width
+    table = Table(('Operation','P95 ms','Result'), [('GET /items/測試', '1.25', 'Approved for repeated public reads')])
+    for width in (16, 40, 82):
+        lines = list(table.lines(width))
+        assert all(cell_width(line) <= width for line in lines)
+        assert '1.25' in '\n'.join(lines)
+        assert 'reads' in '\n'.join(lines)
+
+
+def test_workspace_stops_only_its_owned_services(tmp_path, monkeypatch):
+    from autotuner import benchmarking
+    from autotuner.terminal_ui import Panel
+    proxy, restarted, demo = Mock(), Mock(), Mock()
+    child = Mock(side_effect=[proxy,restarted,demo])
+    monkeypatch.setattr(benchmarking, 'Child', child)
+    workspace = terminal.Workspace(tmp_path,tmp_path/'base.json',Mock(),io.StringIO(),io.StringIO())
+    workspace.panel = Panel('Services')
+    monkeypatch.setattr(workspace, 'structured', lambda args: {'config': {
+        'mode':'observe', 'listen':'127.0.0.1:8080', 'upstream':'http://127.0.0.1:3000'}})
+    monkeypatch.setattr(workspace, 'confirm', lambda _:True)
+    for _ in range(2):
+        workspace.start_proxy(['serve','--config',str(workspace.config)])
+    proxy.close.assert_called_once()
+    workspace.toggle_demo()
+    monkeypatch.setattr(workspace, 'navigate', lambda:0)
+    assert workspace.loop() == 0
+    restarted.close.assert_called_once()
+    demo.close.assert_called_once()
+    assert child.call_args_list[0].args == ('workspace-proxy',workspace.config)
+    assert child.call_args.kwargs['port'] == 3000
+
+
+def test_saved_comparison_is_a_table_inside_the_workspace(tmp_path, monkeypatch):
+    from autotuner.terminal_ui import Panel, Table
+
+    saved = tmp_path/'capture.json'
+    write_new(saved, compare(matched('baseline'), matched('optimized')))
+    workspace = terminal.Workspace(tmp_path,tmp_path/'base.json',Mock(),io.StringIO(),io.StringIO())
+    workspace.panel = Panel('Open a saved capture')
+    workspace.open_capture(saved)
+    table = workspace.panel.content[0]
+    assert isinstance(table, Table)
+    assert ('Mean', '10.00 ms', '2.00 ms', '+80.0%') in table.rows
+    assert ('Cache hits', '0', '2', '-') in table.rows
+    assert workspace.panel.details
+    broken = tmp_path/'broken.json'
+    write_new(broken, dict(schema_version=1, kind='matched-read-comparison', comparable=True))
+    workspace.open_capture(broken)
+    assert 'invalid structure' in workspace.panel.content[-1]
+
+
+def test_workspace_proxy_binds_selected_listener(tmp_path, monkeypatch):
+    from autotuner import qualification_server
+
+    config = tmp_path/'base.json'
+    write_new(config, {'upstream':'http://127.0.0.1:3000', 'listen':'[::1]:8092'})
+    monkeypatch.delenv('AUTOTUNER_LISTEN', raising=False)
+    monkeypatch.setattr(sys,'argv',['qualification_server','--kind','workspace-proxy','--path',str(config)])
+    inspect = Mock()
+    monkeypatch.setattr(qualification_server.uvicorn.Server,'run',lambda self:inspect(self.config))
+    qualification_server.main()
+    server = inspect.call_args.args[0]
+    assert (server.host, server.port) == ('::1',8092)
+    assert server.app.config.listen == '[::1]:8092'

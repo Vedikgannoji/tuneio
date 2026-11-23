@@ -1,15 +1,16 @@
 """Small, line-oriented terminal workspace; all actions use explicit argv lists."""
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass
 from io import StringIO
 import json
+import logging
 import os
 from pathlib import Path
 import sys
 
 from ._version import __version__
-from .terminal_reports import review_lines, summary
-from .terminal_ui import Keyboard, Theme, clip, terminal_size
+from .terminal_reports import capture_view, details_table, report_view, review_lines, summary
+from .terminal_ui import Keyboard, Panel, Theme, clip, terminal_size
 
 MAX_INPUT=4096
 PLANNED=()
@@ -33,11 +34,13 @@ GROUPS={
     '1':('Setup and configuration',(
         Action('1','Validate selected configuration',('config','check'),'read_local'),
         Action('2','Create observe configuration',('init',),'write_config','create'),
-        Action('3','Run proxy in this terminal',('serve',),'listen','serve'),
+        Action('3','Start or restart workspace proxy',('serve',),'listen','serve'),
         Action('4','Offline diagnostics',('doctor',),'read_local'),
         Action('5','Check upstream TCP connectivity',('doctor','--connect'),'connect_upstream'),
         Action('6','Discover project API operations',('discover',),'read_local','discover'),
         Action('7','Discover and set up this project',('setup',),'review_config','setup'),
+        Action('8','Stop workspace proxy',('serve',),'stop_owned_proxy','stop_proxy'),
+        Action('9','Start or stop demo API',('demo',),'control_demo','demo'),
     )),
     '2':('Session and insights',(
         Action('1','Current session status',('status',),'query_proxy'),
@@ -62,6 +65,8 @@ GROUPS={
         Action('3','Export stored telemetry JSON',('report','--format','json'),'write_export','export'),
         Action('4','Export live telemetry JSON',('report','--live','--format','json'),'query_proxy_and_export','export'),
         Action('5','Compare baseline and optimized captures',('compare',),'read_and_export','compare'),
+        Action('6','Open a saved capture or comparison',('baseline',),'read_local','saved_capture'),
+        Action('7','View a stored session by ID',('report','--format','json'),'read_local','stored_session'),
     )),
 }
 
@@ -91,35 +96,214 @@ class Workspace:
         self.stdin,self.stdout=stdin,stdout
         self.theme = Theme(stdout, plain=plain)
         self.keyboard = Keyboard(stdin)
+        self.panel = None
+        self.proxy = self.demo = None
 
     def say(self,text=''):
-        print(text,file=self.stdout)
+        if self.panel is None:
+            print(text,file=self.stdout)
+        else:
+            self.panel.add(text)
+
+    def view(self):
+        panel = self.panel
+        with self.keyboard.active():
+            while True:
+                width, height = terminal_size()
+                panel.draw(self.theme, width, height)
+                key = self.keyboard.read(1)
+                if key in ('enter','back','b','q'):
+                    return
+                if key == 'd' and panel.details:
+                    panel.show_details = not panel.show_details
+                    panel.offset = 0
+                else:
+                    panel.move(key, height)
 
     def ask(self,prompt):
+        if self.panel is not None:
+            panel = self.panel
+            panel.offset = sys.maxsize
+            value = ''
+            with self.keyboard.active():
+                while True:
+                    width, height = terminal_size()
+                    panel.draw(self.theme, width, height, prompt=prompt, value=value)
+                    key = self.keyboard.read(1, text=True)
+                    if key == 'enter':
+                        panel.add(prompt.strip() + ' ' + value)
+                        return value.strip()
+                    if key == 'back':
+                        return 'b'
+                    if key == 'erase':
+                        value = value[:-1]
+                    elif key and len(key) == 1 and key.isprintable():
+                        if len(value) >= MAX_INPUT:
+                            raise InputTooLong()
+                        value += key
+                    else:
+                        panel.move(key, height)
         self.stdout.write(prompt);self.stdout.flush()
         line=self.stdin.readline(MAX_INPUT+1)
         if not line:raise EOFError()
         if len(line)>MAX_INPUT:raise InputTooLong()
         return line.strip()
 
-    def confirm(self,prompt):
-        return self.ask(prompt+' [y/N]: ').lower() in ('y','yes')
+    def select(self, prompt, options, *, default=0):
+        shortcuts = {str(index + 1): index for index in range(len(options))}
+        if self.panel is None:
+            self.say(prompt)
+            for key, index in shortcuts.items():
+                suffix = ' (default)' if index == default else ''
+                self.say(f'{key}. {options[index]}{suffix}')
+            while True:
+                answer = self.ask('Select a number (b cancels): ').lower()
+                if answer == 'b':
+                    return None
+                if not answer:
+                    return default
+                if answer in shortcuts:
+                    return shortcuts[answer]
+                self.say('Choose a listed number.')
+
+        selected = default
+        self.panel.offset = sys.maxsize
+        with self.keyboard.active():
+            while True:
+                width, height = terminal_size()
+                self.panel.draw(self.theme, width, height, prompt=prompt, choices=options, selected=selected)
+                key = self.keyboard.read(1)
+                if key in ('back', 'b'):
+                    return None
+                if key == 'enter' or key in shortcuts:
+                    selected = shortcuts.get(key, selected)
+                    self.say(f'{prompt}  {options[selected]}')
+                    return selected
+                if key in ('up', 'down'):
+                    selected = (selected + (-1 if key == 'up' else 1)) % len(options)
+                else:
+                    self.panel.move(key, height)
+
+    def confirm(self, prompt):
+        return self.select(prompt, ('Yes', 'No'), default=1) == 0
 
     def help(self):
-        self.say('Use an arrow key and Enter, or press a menu shortcut. In plain mode, press Enter after the shortcut.')
+        self.say('Press a number or use arrows and Enter to choose. In plain mode, press Enter after the number.')
         self.say('b goes back. q or Ctrl+C exits.')
-        self.say('Entry is offline. Session actions query a proxy already running with the selected config.')
-        self.say('Create config, then run autotuner serve --config YOUR_CONFIG in another terminal for session actions.')
+        self.say('Entry is offline. Session actions query the proxy running with the selected config.')
+        self.say('Use Setup and configuration to start the proxy. The workspace stops its own services on exit.')
         self.say('The proxy routes traffic to your upstream; installing Autotuner alone does not connect your API.')
         self.say('Fast origins can correctly remain uncached. Cache rules and invalidation need explicit configuration.')
         self.say('Monitor shows live traffic and tuning. Use Reports to compare two matched read captures.')
 
     def run_json(self, args):
         output = StringIO()
-        with redirect_stdout(output):
-            code = self.invoke(['--no-input', *args, '--json'])
+        if self.panel is None:
+            with redirect_stdout(output):
+                code = self.invoke(['--no-input', *args, '--json'])
+        else:
+            code = self.invoke_in_panel(['--no-input', *args, '--json'], output)
         raw = output.getvalue()
         return code, json.loads(raw) if raw else None
+
+    def invoke_in_panel(self, argv, output=None):
+        if self.panel is None:
+            return self.invoke(argv)
+        diagnostic = StringIO()
+        self.panel.draw(self.theme, *terminal_size())
+        try:
+            with redirect_stdout(output if output is not None else diagnostic), redirect_stderr(diagnostic):
+                return self.invoke(argv)
+        finally:
+            # A foreground server can initialize logging while stderr is redirected.
+            for handler in logging.getLogger().handlers[:]:
+                if getattr(handler, 'stream', None) is diagnostic:
+                    logging.getLogger().removeHandler(handler)
+                    handler.close()
+            if diagnostic.getvalue().strip():
+                self.render([diagnostic.getvalue().strip()])
+
+    def show_result(self, command, data):
+        if self.panel is None:
+            self.render(summary(command, data))
+            return
+        for item in report_view(command, data):
+            self.panel.add(item)
+        self.panel.add(details_table(data), detail=True)
+
+    def show_capture(self, saved):
+        self.render(summary('baseline', saved))
+        if self.panel is not None and saved.get('output'):
+            self.open_capture(Path(saved['output']))
+
+    def open_capture(self, path):
+        from .artifacts import read_json
+        data, _ = read_json(path, 32*1024*1024)
+        kind = data.get('kind')
+        if data.get('schema_version') != 1 or (kind != 'matched-read-comparison' and
+                (kind not in ('active','passive') or 'baseline_id' not in data)):
+            self.say('Select a capture or comparison saved by Autotuner.')
+            return
+        try:
+            lines = list(report_view('compare', data) if kind == 'matched-read-comparison' else capture_view(data))
+        except (KeyError, TypeError, AttributeError, ValueError):
+            self.say('The report is incomplete or has an invalid structure.')
+            return
+        for item in lines:
+            if self.panel is not None:
+                self.panel.add(item)
+            elif isinstance(item, str):
+                self.render([item])
+            else:
+                self.render(item.lines(terminal_size()[0]))
+        if self.panel is not None:
+            self.panel.add(details_table(data), detail=True)
+
+    def stop_service(self, name):
+        child = getattr(self, name)
+        if child is not None:
+            setattr(self, name, None)
+            child.close()
+
+    def start_proxy(self, args):
+        from .benchmarking import Child
+
+        checked = self.structured(['config','check',*args[1:]])
+        if checked is None:
+            return
+        cfg = checked['config']
+        self.say(f"Proxy {cfg['listen']} forwards to {cfg['upstream']} in {cfg['mode']} mode.")
+        if not self.confirm('Start the proxy with this config?' if self.proxy is None else 'Restart the workspace proxy with this config?'):
+            return
+        self.stop_service('proxy')
+        self.say('Starting the proxy...')
+        self.panel.draw(self.theme, *terminal_size())
+        try:
+            self.proxy = Child('workspace-proxy', self.config)
+        except (RuntimeError, OSError):
+            self.say('Proxy startup failed. Check the selected config and whether its port is already in use.')
+        else:
+            self.say(f"Proxy running at {cfg['listen']}. Open Session and insights for live metrics.")
+
+    def toggle_demo(self):
+        if self.demo is not None:
+            if self.confirm('Stop the demo and discard its in-memory data?'):
+                self.stop_service('demo')
+                self.say('Demo stopped.')
+            return
+        if not self.confirm('Start the disposable demo API on 127.0.0.1:3000?'):
+            return
+        from .benchmarking import Child
+
+        self.say('Starting the demo API...')
+        if self.panel is not None:
+            self.panel.draw(self.theme, *terminal_size())
+        try:
+            self.demo = Child('demo', self.config, port=3000)
+        except (RuntimeError, OSError):
+            self.say('Demo startup failed. Check whether port 3000 is already in use.')
+        else:
+            self.say('Demo running on 127.0.0.1:3000. Start or restart the proxy with a config pointing there.')
 
     def structured(self, args):
         result, data = self.run_json(args)
@@ -143,12 +327,12 @@ class Workspace:
             return
         code, saved = self.run_json([*args, '--apply', preview['review_token']])
         if saved and args[0] == 'baseline':
-            self.render(summary('baseline', saved))
+            self.show_capture(saved)
         if code == 0:
             if pick_config:
                 self.config = selected_path(preview['output'], self.project)
                 self.render(['Saved and selected ' + str(self.config) + ' for the next proxy start.',
-                             f'Use autotuner serve --config "{self.config}" in the proxy terminal.'])
+                             'Use Setup and configuration to start or restart the proxy.'])
         else:
             self.say('Apply did not complete. Check the diagnostic above.')
 
@@ -190,18 +374,21 @@ class Workspace:
             if not route or route.lower() == 'b':
                 return
             self.say('Configured write operations are included as invalidation dependencies.')
+            methods = ('POST', 'PUT', 'PATCH', 'DELETE')
             while True:
-                dependency = self.ask('Additional write as METHOD /path (blank finishes, b cancels): ')
+                method = self.select('Add an invalidating write', (*methods, 'Done adding writes'), default=len(methods))
+                if method is None:
+                    return
+                if method == len(methods):
+                    break
+                dependency = self.ask(f'{methods[method]} path (b cancels): ')
                 if dependency.lower() == 'b':
                     return
-                if not dependency:
-                    break
-                fields = dependency.split()
-                if len(fields) != 2 or fields[0].upper() not in ('POST','PUT','PATCH','DELETE') or not fields[1].startswith('/'):
-                    raise ValueError('Expected METHOD /path')
-                args += ['--invalidate', fields[0].upper(), fields[1]]
+                if not dependency.startswith('/') or any(char.isspace() for char in dependency):
+                    raise ValueError('Expected a write path starting with /')
+                args += ['--invalidate', methods[method], dependency]
             args += ['--route='+route]
-            if self.confirm('Attest that this resource has no dependent writes?'):
+            if '--invalidate' not in args and self.confirm('Attest that this resource has no dependent writes?'):
                 args += ['--read-only']
             baseline = self.ask('Optional baseline JSON for review evidence (blank skips, b cancels): ')
             if baseline.lower() == 'b':
@@ -213,8 +400,9 @@ class Workspace:
             self.review([*args,'--output='+str(selected_path(output, self.project))], pick_config=True)
 
     def guided_baseline(self, args):
-        stage = self.ask('Stage [baseline] or optimized (b cancels): ').lower() or 'baseline'
-        if stage == 'b':
+        stages = ('Baseline', 'Optimized')
+        stage = self.select('Capture stage', stages)
+        if stage is None:
             return
         route = self.ask('Concrete GET path (b cancels): ')
         if not route or route.lower() == 'b':
@@ -222,8 +410,9 @@ class Workspace:
         state = self.ask('Application build/test-data identifier (b cancels): ')
         if not state or state.lower() == 'b':
             return
-        environment = self.ask('Target environment [local] or staging (b cancels): ').lower() or 'local'
-        if environment == 'b':
+        environments = ('Local', 'Staging')
+        environment = self.select('Target environment', environments)
+        if environment is None:
             return
         repeat = self.ask('Measured requests [10] (b cancels): ') or '10'
         if repeat.lower() == 'b':
@@ -233,11 +422,26 @@ class Workspace:
             return
         output = self.ask('New capture JSON path (b cancels): ')
         if output and output.lower() != 'b':
-            self.review([*args, '--stage='+stage, '--get='+route, '--app-state='+state,
-                         '--environment='+environment, '--requests='+repeat, '--warmup='+warmup,
+            self.review([*args, '--stage='+stages[stage].lower(), '--get='+route, '--app-state='+state,
+                         '--environment='+environments[environment].lower(), '--requests='+repeat, '--warmup='+warmup,
                          '--output='+str(selected_path(output,self.project))])
 
     def execute(self,action):
+        if action.prompt == 'saved_capture':
+            path = self.ask('Saved report path (b cancels): ')
+            if path and path.lower() != 'b':
+                self.open_capture(selected_path(path, self.project))
+            return
+        if action.prompt == 'demo':
+            self.toggle_demo()
+            return
+        if action.prompt == 'stop_proxy':
+            if self.proxy is None:
+                self.say('There is no proxy started by this workspace.')
+            elif self.confirm('Stop the workspace proxy?'):
+                self.stop_service('proxy')
+                self.say('Workspace proxy stopped.')
+            return
         if action.prompt == 'setup':
             self.guided_setup()
             return
@@ -254,14 +458,19 @@ class Workspace:
             cmd = ['compare', str(selected_path(before,self.project)), str(selected_path(after,self.project))]
             if output:
                 cmd += ['--output='+str(selected_path(output,self.project))]
-            code = self.invoke(['--no-input', *cmd])
+            if self.panel is None:
+                code = self.invoke(['--no-input', *cmd])
+            else:
+                code, result = self.run_json(cmd)
+                if result:
+                    self.show_result('compare', result)
             if code in (0, 3) and output:
                 self.render([f'Comparison saved to {selected_path(output, self.project)}'])
             return
         if action.prompt == 'discover':
-            code = self.invoke(['--no-input', 'discover', '--project', str(self.project)])
+            code = self.invoke_in_panel(['--no-input', 'discover', '--project', str(self.project)])
             if code == 0:
-                self.say('To preview an observe config for these operations, run autotuner setup --help.')
+                self.say('Use Discover and set up this project to preview an observe configuration.')
             else:
                 self.say(f'Action did not complete (exit {code}). Check the diagnostic above.')
             return
@@ -281,6 +490,9 @@ class Workspace:
             args+=['--upstream='+ (upstream or 'http://127.0.0.1:3000')]
             if not self.confirm('Create an observe configuration at '+display(self.config)+' without overwriting?'):return
         elif action.prompt=='serve':
+            if self.panel is not None:
+                self.start_proxy(args)
+                return
             if not self.confirm('Run the proxy here using the selected config? Ctrl+C stops it and returns'):return
         elif action.prompt=='clear':
             if not self.confirm('Remove stored cache responses? Configured rules are retained'):return
@@ -295,12 +507,20 @@ class Workspace:
             target=self.ask('Export file path (b cancels): ')
             if not target or target.lower()=='b':return
             args+=['--output',str(selected_path(target,self.project))]
+        elif action.prompt == 'stored_session':
+            session = self.ask('Session ID from List stored sessions (b cancels): ')
+            if not session or session.lower() == 'b':
+                return
+            args += ['--session='+session]
         if args[0] in SUMMARY_COMMANDS and not (args[0] == 'report' and action.prompt == 'export'):
             code, data = self.run_json(args)
             if data:
-                self.render(summary(args[0], data))
+                if args[0] == 'baseline':
+                    self.show_capture(data)
+                else:
+                    self.show_result(args[0], data)
         else:
-            code = self.invoke(['--no-input', *args])
+            code = self.invoke_in_panel(['--no-input', *args])
             data = None
         if code != 0:
             self.say(f'Action did not complete (exit {code}). Check the diagnostic above.')
@@ -352,6 +572,16 @@ class Workspace:
         self.theme.screen(top)
 
     def loop(self):
+        try:
+            with self.theme.fullscreen():
+                return self.navigate()
+        finally:
+            try:
+                self.stop_service('proxy')
+            finally:
+                self.stop_service('demo')
+
+    def navigate(self):
         group=None
         if not self.theme.rich:
             self.say('Autotuner '+__version__+' | Terminal workspace')
@@ -369,9 +599,12 @@ class Workspace:
             choice=self.choose(group)
             if choice in ('q','quit','exit'):return 0
             if choice in ('h','?'):
+                if self.theme.rich:
+                    self.panel = Panel('Help')
                 self.help()
                 if self.theme.rich:
-                    self.ask('Press Enter to return: ')
+                    self.view()
+                    self.panel = None
                 continue
             if choice in ('b','0'):
                 if group is None:return 0
@@ -379,8 +612,12 @@ class Workspace:
             if group is None:
                 if choice in GROUPS:group=choice;continue
                 if choice in ('p','c'):
+                    if self.theme.rich:
+                        self.panel = Panel('Select project' if choice=='p' else 'Select config')
                     value=self.ask('Project directory (b cancels): ' if choice=='p' else 'Config path (b cancels): ')
-                    if not value or value.lower()=='b':continue
+                    if not value or value.lower()=='b':
+                        self.panel = None
+                        continue
                     try:
                         target=selected_path(value,self.project)
                         if choice=='p':
@@ -390,17 +627,20 @@ class Workspace:
                     except (OSError,ValueError):
                         self.say('Cannot select that path. Check the directory or file name.')
                         if self.theme.rich:
-                            self.ask('Press Enter to return: ')
+                            self.view()
+                    self.panel = None
                     continue
             else:
                 action=next((a for a in GROUPS[group][1] if a.key==choice),None)
                 if action is not None:
                     if self.theme.rich and action.prompt != 'monitor':
-                        self.say('\n' + self.theme.paint('accent', action.label))
+                        self.panel = Panel(action.label)
                     try:self.execute(action)
                     except (OSError,ValueError):self.say('Cannot use that input or path. No automatic retry was made.')
-                    if self.theme.rich and action.prompt != 'monitor':
-                        self.ask('Press Enter to return: ')
+                    if self.panel is not None:
+                        self.panel.offset = 0
+                        self.view()
+                        self.panel = None
                     continue
             self.say('Choose a listed key. Use h for help.')
 

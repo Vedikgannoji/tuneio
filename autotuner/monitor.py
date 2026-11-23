@@ -3,8 +3,8 @@ import sys
 from textwrap import wrap
 from time import monotonic
 
-from .terminal_reports import bytes_used, milliseconds, words
-from .terminal_ui import Keyboard, Theme, clip, terminal_size
+from .terminal_reports import bytes_used, details_table, metrics_table, milliseconds, words
+from .terminal_ui import Keyboard, Table, Theme, clip, terminal_size
 
 TABS = ('Endpoints', 'Cache', 'Findings', 'Resources')
 INTERVALS = (1, 2, 5, 10)
@@ -72,6 +72,27 @@ def tab_rows(data, tab, pattern, *, width=132):
             if not isinstance(value, (dict, list)) and pattern in f'{group} {words(key)}'.casefold()]
 
 
+def monitor_table(data, tab, pattern):
+    if tab == 0:
+        pairs = sorted(data['metrics']['routes'].items(), key=lambda item: -item[1]['count'])
+        return metrics_table([(name, row) for name,row in pairs if pattern in name.casefold()], live=True)
+    if tab == 1:
+        rows = [(rule['match'], words(rule['state']), rule['detail']) for rule in data['policies']
+                if pattern in (rule['id']+' '+rule['match']).casefold()]
+        rows += [(event['rule_id'], words(event['action']),
+                  f"{words(event['reason'])} | TTL {event['new_ttl_seconds']:g} s") for event in reversed(data['decisions'])
+                 if pattern in event['rule_id'].casefold()]
+        return Table(('Route or rule','State','Details'), rows)
+    if tab == 2:
+        return Table(('Operation','Finding','Recommendation'), [
+            (item['operation'] or 'Session', words(item['code']).capitalize(), item['recommendation'])
+            for item in data['findings'] if pattern in (item['operation'] or 'Session').casefold()])
+    status = data['status']
+    groups = {name: status[name] for name in ('runtime', 'transport', 'storage', 'limits', 'cache')}
+    table = details_table(groups)
+    return Table(table.headings, [row for row in table.rows if pattern in row[0].casefold()])
+
+
 class Monitor:
     def __init__(self, fetch, errors, theme, window, interval, pattern, *, clock=monotonic):
         self.fetch, self.errors, self.theme, self.clock = fetch, errors, theme, clock
@@ -129,7 +150,11 @@ class Monitor:
             occupied = min(bar_length, int(bar_length*cache['accounted_bytes']/cache['byte_budget']))
             header.append(draw('accent', f"{'█'*occupied}{'░'*(bar_length-occupied)}   "
                                f"{cache['entries']} entries · {bytes_used(cache['accounted_bytes'])} used"))
-        rows = tab_rows(self.data, self.tab, self.pattern, width=width)
+        if self.theme.rich:
+            table = monitor_table(self.data, self.tab, self.pattern)
+            rows = list(table.lines(width)) if table.rows else []
+        else:
+            rows = tab_rows(self.data, self.tab, self.pattern, width=width)
         page = max(1, min(100, height-len(header)-3))
         self.index = min(self.index, max(0, len(rows)-page))
         header.append(draw('border', '─'*width))

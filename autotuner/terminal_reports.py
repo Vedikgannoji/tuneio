@@ -1,5 +1,7 @@
 """Human-readable views of the existing command results."""
 
+from .terminal_ui import Table
+
 
 def words(value):
     return 'Unavailable' if value is None else str(value).replace('_', ' ')
@@ -20,6 +22,132 @@ def show_rows(rows, empty):
     yield from rows[:20] or [empty]
     if len(rows) > 20:
         yield f'{len(rows)-20} more. Use JSON for the full result.'
+
+
+def metric_value(key, value):
+    if value is None:
+        return 'unavailable'
+    if isinstance(value, bool):
+        return 'yes' if value else 'no'
+    if isinstance(value, (float, int)):
+        if key.endswith('_ms'):
+            return milliseconds(value)
+        if key.endswith('_bytes'):
+            return bytes_used(value)
+        if key.endswith('_seconds'):
+            return f'{value:g} s'
+        if key.endswith('_rate'):
+            return f'{value:.1%}'
+        if key.endswith('_per_second'):
+            return f'{value:.2f}/s'
+        return f'{value:,}' if isinstance(value, int) else f'{value:,.4g}'
+    return str(value)
+
+
+def details_table(data, *, prefix=''):
+    rows = []
+
+    def collect(obj, path, key):
+        if isinstance(obj, dict):
+            for name, value in obj.items():
+                collect(value, f'{path} / {words(name)}' if path else words(name), name)
+        elif isinstance(obj, list):
+            for index, value in enumerate(obj, 1):
+                collect(value, f'{path} / {index}', key)
+        else:
+            rows.append((path, metric_value(key, obj)))
+
+    collect(data, prefix, '')
+    return Table(('Metric', 'Value'), rows)
+
+
+def metrics_table(pairs, *, live=False):
+    header = ('Operation', 'Requests', 'Mean ms', 'P50 ms', 'P95 ms', 'P99 ms', 'Errors', 'Hits')
+    rows = []
+    for operation, row in pairs:
+        latency = tuple(f'{row[key]:.2f}' if row.get(key) is not None else '-'
+                        for key in ('mean_ms', 'p50_ms', 'p95_ms', 'p99_ms'))
+        rate = row.get('error_rate')
+        cells = (operation, f"{row['count']:,}", *latency,
+                 f'{rate:.1%}' if rate is not None and row['count'] else '-', f"{row.get('cache_hits',0):,}")
+        if live:
+            cells += (f"{row['requests_per_second']:.2f}",)
+        rows.append(cells)
+    return Table(header + (('Req/s',) if live else ()), rows)
+
+
+def comparison_table(data):
+    before, after = data['baseline'], data['optimized']
+    rows = []
+    for label, key in (('Mean', 'mean_ms'), ('P50', 'p50_ms'), ('P95', 'p95_ms'), ('P99', 'p99_ms')):
+        delta = data['latency_reduction_percent'][key]
+        rows.append((label, milliseconds(before[key]), milliseconds(after[key]),
+                     f'{delta:+.1f}%' if delta is not None else '-'))
+    for label, key in (('Measured requests','requests'), ('Errors','errors'), ('Cache hits','hits'),
+                       ('Requests/s','requests_per_second'), ('Elapsed','elapsed_seconds')):
+        rows.append((label, metric_value(key, before[key]), metric_value(key, after[key]), '-'))
+    return Table(('Metric', 'Baseline', 'Optimized', 'Reduction'), rows)
+
+
+def report_view(command, data):
+    if command == 'report':
+        yield f"{data['effective_mode'].capitalize()} session | Started {data['started_at']}"
+        if data['sampling'].get('sampling_may_be_incomplete'):
+            yield 'Showing committed telemetry. Some observations may be missing.'
+        for boundary in ('proxy','upstream'):
+            pairs = [(f"{row['method']} {row['route']}", row) for row in data['routes'] if row['boundary'] == boundary]
+            if pairs:
+                yield f'{boundary.capitalize()} metrics'
+                yield metrics_table(pairs)
+        if not data['routes']:
+            yield 'This session has no stored route metrics.'
+        decisions = data.get('tuning_decisions', [])
+        if decisions:
+            yield 'Tuning decisions'
+            yield details_table(decisions, prefix='Decision')
+    elif command == 'endpoints':
+        yield f"Last {data['window_seconds']} s"
+        if data.get('window_may_be_incomplete'):
+            yield 'In-memory history reached capacity. Window counts may be incomplete.'
+        yield metrics_table([('All requests', data['summary']), *data['routes'].items()], live=True)
+    elif command == 'sessions':
+        if not data['sessions']:
+            yield 'No saved sessions for this configuration.'
+        else:
+            yield Table(('Session', 'Started', 'Ended'), [
+                (row['session_id'], row['started_at'], row.get('ended_at') or 'Shutdown unrecorded')
+                for row in data['sessions']])
+    elif command == 'compare':
+        if data['comparable']:
+            yield comparison_table(data)
+            yield data['limitations']
+        else:
+            yield 'Captures are incomparable.'
+            yield from (words(reason) for reason in data['reasons'])
+    elif command == 'insights':
+        yield f"Last {data['window_seconds']} s | {words(data['state']).capitalize()}"
+        findings = data['findings']
+        if findings:
+            yield Table(('Operation', 'Finding', 'Recommendation'), [
+                (item['operation'] or 'Session', words(item['code']).capitalize(), item['recommendation'])
+                for item in findings])
+        else:
+            yield 'No findings in this window.'
+    else:
+        yield from summary(command, data)
+
+
+def capture_view(data):
+    yield f"{words(data.get('stage', 'baseline')).capitalize()} capture | {words(data.get('state'))}"
+    result = data.get('active_result')
+    if result:
+        yield details_table({key: value for key, value in result.items() if key != 'samples'})
+        yield Table(('Read', 'HTTP', 'Latency', 'Cache', 'Result'), [
+            (str(index), str(row.get('status') or '-'), milliseconds(row.get('duration_ms')),
+             row.get('cache') or '-', words(row.get('reason')))
+            for index,row in enumerate(result['samples'], 1)])
+    elif data.get('metrics', {}).get('summary'):
+        yield metrics_table([('Observed traffic', data['metrics']['summary'])], live=True)
 
 
 def rule_lines(rules):

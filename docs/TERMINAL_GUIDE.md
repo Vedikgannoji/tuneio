@@ -4,11 +4,24 @@
 
 Run `autotuner` from your project or use `autotuner menu --project PATH --config FILE`. Entry is offline. It reads terminal input after you select a menu action. Use arrows and Enter, number keys, **b** to go back, **q** to quit and **h** for help.
 
+Choose a listed number or move the highlight with **Up/Down** and press **Enter**. For matched captures, **1** selects **Baseline** or **Local**, and **2** selects **Optimized** or **Staging** on the corresponding screen. Approvals default to **No**. Press **1** for **Yes**. Paths and other custom values use the text box.
+
 The terminal supplies the font. For the purple block-letter title and highlighted selection, use a true-color terminal such as Windows Terminal with Cascadia Mono or JetBrains Mono. On narrow terminals the title fits on one line. `--plain` and `NO_COLOR=1` use line prompts. Redirected scripts can use `autotuner menu --json` for the action list.
 
-In the keyboard-driven view, menus and the live monitor redraw in their own screen. Menu prompts and results stay in your terminal history. Use **Reports and history → View stored telemetry summary** to check request counts, p95 latency, errors, and cache hits. Choose an **Export** action for the full JSON, or pass `--json` to scripting commands that support it.
+The keyboard-driven workspace holds menus, forms, reports, and the live monitor on the same screen. Use **Up/Down** and **PgUp/PgDn** to scroll reports. Press **d** where offered to see detailed metrics, then **Enter** to return. Use **Reports and history** to view stored telemetry, open a saved capture or comparison, or export full JSON. Scripting commands also support `--json` where shown in help.
 
-## Complete demo on Windows
+Start the demo from **Setup and configuration → Start or stop demo API**. With a config selected, choose **Start or restart workspace proxy**. The rich workspace runs its proxy in the background, so you can open **Session and insights → Open live monitor** in the same window. After saving a policy revision, use the same proxy action to activate it. The workspace stops the processes it started when you quit. Plain mode also supports a foreground proxy with Ctrl+C to return.
+
+## Run the demo in one Autotuner window
+
+From the checkout with Autotuner installed, run `autotuner menu --config examples/adaptive-demo.json`. The demo uses port 3000 and the proxy uses port 8080. Free those ports before starting.
+
+1. Open **Setup and configuration** and select **9 Start or stop demo API**. Confirm and press **Enter** to return to Setup.
+2. Select **3 Start or restart workspace proxy**. Confirm, press **Enter** to return and press **b** for the workspace menu.
+3. Open **Session and insights** and select **5 Capture matched GET workload**. With this sample config, choose **2 Optimized**. Enter `/api/products` and the application identifier `demo-seed-v1`, select **1 Local**, and enter eight measured requests and five warmup requests. Enter a new JSON filename and choose **1 Yes** on the preview. To make a matched pair, capture the baseline first with an observe config that defines the same operation and upstream, then switch to the optimized config and restart the proxy. Keep the demo running for both captures.
+4. Select **6 Open live monitor** to see request volume, latency, errors, cache behavior, findings and resource usage. Press **q** to go back to the workspace. Open **Reports and history** to revisit saved captures or compare a matched pair.
+
+## Scripted demo on Windows
 
 Use three Command Prompt windows. Choose free ports if 3000 or 8080 are already occupied. The RAM upstream and the files under `tmp\beta-review` are disposable. Choose a new directory name for a second run.
 
@@ -97,7 +110,7 @@ On Linux and macOS, use your checkout path, `source .venv/bin/activate`, and `cu
 
 | Symptom | What to check |
 | --- | --- |
-| Cannot reach proxy | Start `autotuner serve --config FILE` in another terminal and leave it running. Use the same configuration for CLI commands. |
+| Cannot reach proxy | Select **Start or restart workspace proxy** in **Setup and configuration**. Select the same configuration in the workspace and the monitor. For scripts, start `autotuner serve --config FILE`. |
 | Upstream failure | Start the upstream and verify its listener with `autotuner doctor --config FILE --connect`. |
 | Cache never serves | Check `autotuner cache explain PATH --config FILE --json` for training, privacy, freshness or mutation reasons. |
 | Preview was rejected | Repeat the preview after edits and apply the current token to the same target file. An existing output needs a new filename. |

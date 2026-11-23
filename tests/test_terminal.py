@@ -64,11 +64,11 @@ def test_json_manifest_does_not_scan_read_config_or_connect(tmp_path,monkeypatch
 
 
 @pytest.mark.parametrize('group,key,answers,prefix',[
-    ('1','1','', ['config','check']),('1','2','\nyes\n',['init']),
-    ('1','3','yes\n',['serve']),('1','4','',['doctor']),('1','5','',['doctor','--connect']),
+    ('1','1','', ['config','check']),('1','2','\n1\n',['init']),
+    ('1','3','1\n',['serve']),('1','4','',['doctor']),('1','5','',['doctor','--connect']),
     ('2','1','',['status']),('2','2','',['endpoints']),('2','3','',['insights']),
     ('2','4','baseline.json\n',['baseline']),
-    ('3','1','/api/products\n',['cache','explain']),('3','2','yes\n',['cache','clear']),
+    ('3','1','/api/products\n',['cache','explain']),('3','2','1\n',['cache','clear']),
     ('4','1','',['sessions']),('4','2','',['report','--format','json']),
     ('4','3','export.json\n',['report','--format','json']),('4','4','export.json\n',['report','--live','--format','json']),
 ])
@@ -86,7 +86,7 @@ def test_available_actions_dispatch_argv_without_shell(tmp_path,group,key,answer
 
 
 @pytest.mark.parametrize('group,key,answers',[
-    ('1','2','b\n'),('1','2','\nn\n'),('1','3','n\n'),('3','2','\n'),
+    ('1','2','b\n'),('1','2','\n2\n'),('1','3','2\n'),('3','2','\n'),
     ('3','1','b\n'),('4','3','b\n'),('4','3','\n'),
 ])
 def test_cancelled_or_unconfirmed_actions_do_nothing(tmp_path,group,key,answers):
@@ -134,7 +134,7 @@ def test_config_precedence(tmp_path,monkeypatch):
 
 def test_create_and_validate_use_existing_cli_with_no_network(tmp_path,monkeypatch):
     monkeypatch.chdir(tmp_path);out=TTY();monkeypatch.setattr(sys,'stdout',out)
-    monkeypatch.setattr(sys,'stdin',TTY('1\n2\nhttp://127.0.0.1:3000\nyes\n1\nb\nq\n'))
+    monkeypatch.setattr(sys,'stdin',TTY('1\n2\nhttp://127.0.0.1:3000\n1\n1\nb\nq\n'))
     network=Mock(side_effect=AssertionError('Unexpected connection'));monkeypatch.setattr(cli.socket,'create_connection',network)
     assert cli.main(['menu'])==0
     config=json.loads((tmp_path/'autotuner.json').read_text())
@@ -145,12 +145,12 @@ def test_create_and_validate_use_existing_cli_with_no_network(tmp_path,monkeypat
 
 def test_create_refuses_to_overwrite_existing_configuration(tmp_path,monkeypatch):
     monkeypatch.chdir(tmp_path);path=tmp_path/'autotuner.json';path.write_text('preserve me')
-    monkeypatch.setattr(sys,'stdout',TTY());monkeypatch.setattr(sys,'stdin',TTY('1\n2\n\ny\nq\n'))
+    monkeypatch.setattr(sys,'stdout',TTY());monkeypatch.setattr(sys,'stdin',TTY('1\n2\n\n1\nq\n'))
     assert cli.main(['menu'])==0 and path.read_text()=='preserve me'
 
 
 def test_missing_config_actions_explain_recovery(tmp_path, monkeypatch, capsys):
-    monkeypatch.setattr(sys, 'stdin', TTY('1\n1\n3\ny\nb\n3\n2\ny\nq\n'))
+    monkeypatch.setattr(sys, 'stdin', TTY('1\n1\n3\n1\nb\n3\n2\n1\nq\n'))
     output = TTY()
     monkeypatch.setattr(sys, 'stdout', output)
     network = Mock(side_effect=AssertionError('Unexpected connection'))
@@ -190,7 +190,7 @@ def test_eof_and_keyboard_interrupt_are_clean(tmp_path):
 @pytest.mark.parametrize('prefix',['','3\n1\n'])
 def test_oversized_input_aborts_instead_of_consuming_remainder_as_commands(tmp_path,prefix):
     invoke=Mock(return_value=0)
-    assert run_menu(tmp_path,prefix+'x'*(terminal.MAX_INPUT+1)+'\n3\n2\ny\n',invoke)[0]==2
+    assert run_menu(tmp_path,prefix+'x'*(terminal.MAX_INPUT+1)+'\n3\n2\n1\n',invoke)[0]==2
     invoke.assert_not_called()
 
 

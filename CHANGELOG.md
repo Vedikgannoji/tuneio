@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.0b2 - One-window terminal workspace
+
+- Select capture stages, environments, invalidating write methods and approvals by number or with arrow keys. Paths and other custom values use editable text fields.
+- Run the demo and proxy from the workspace. Quitting stops the processes started there.
+- Read and compare live or saved metrics in scrollable tables. Open detailed evidence in the workspace and export full JSON when needed.
+
 ## 2.1.0b1 - Terminal workflow candidate
 
 - Add a purple, keyboard-driven workspace with a block-letter title, guided setup and policy approvals.
