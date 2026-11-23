@@ -51,6 +51,11 @@ jobs:
           from pathlib import Path
           from tuneio import __version__
 
+          def source_bytes(path, data):
+              if path.suffix in {'.py', '.html', '.css', '.js', '.json'}:
+                  return data.replace(b'\r\n', b'\n')
+              return data
+
           version = __version__
           assert os.environ['RELEASE_TAG'] == 'v' + version, 'Tag and package version differ'
           expected = {f'tuneio-{version}-py3-none-any.whl', f'tuneio-{version}.tar.gz'}
@@ -60,14 +65,14 @@ jobs:
               assert meta['Name'] == 'tuneio' and meta['Version'] == version
               for path in Path('tuneio').rglob('*'):
                   if path.is_file() and '__pycache__' not in path.parts:
-                      assert wheel.read(path.as_posix()) == path.read_bytes(), f'Wheel differs from tag: {path}'
+                      assert source_bytes(path, wheel.read(path.as_posix())) == source_bytes(path, path.read_bytes()), f'Wheel differs from tag: {path}'
           with tarfile.open(Path('dist') / f'tuneio-{version}.tar.gz') as archive:
               prefix = f'tuneio-{version}/'
               meta = email.message_from_bytes(archive.extractfile(prefix + 'PKG-INFO').read())
               assert meta['Name'] == 'tuneio' and meta['Version'] == version
               for path in Path('tuneio').rglob('*'):
                   if path.is_file() and '__pycache__' not in path.parts:
-                      assert archive.extractfile(prefix + path.as_posix()).read() == path.read_bytes(), f'Source archive differs from tag: {path}'
+                      assert source_bytes(path, archive.extractfile(prefix + path.as_posix()).read()) == source_bytes(path, path.read_bytes()), f'Source archive differs from tag: {path}'
           PY
       - run: python -m twine check dist/*
       - run: python scripts/smoke_wheel.py dist

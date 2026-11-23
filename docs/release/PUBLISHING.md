@@ -2,6 +2,8 @@
 
 The `Publish tuneio` workflow is started manually from `main`. It downloads the wheel and source archive already attached to the selected GitHub release, checks their identity and runtime source against the tag, validates metadata, and runs the installed-wheel HTTP smoke. Only verified artifacts reach the upload job. The destination is selected for each run.
 
+Source verification accepts CRLF and LF line endings in Python, HTML, CSS, JavaScript and JSON files. Other byte differences fail verification. Workflow fixes are committed to `main`. Start a new workflow run from `main` after a fix to use the updated verification.
+
 ## Account setup
 
 Create accounts at https://test.pypi.org/account/register/ and https://pypi.org/account/register/. Verify your email and complete the account's two-factor authentication setup. These registries have separate accounts and publisher settings.
