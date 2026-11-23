@@ -1,0 +1,99 @@
+name: Publish tuneio
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing GitHub release tag
+        required: true
+        default: v2.1.0b3
+      registry:
+        description: Upload destination
+        required: true
+        type: choice
+        options:
+          - testpypi
+          - pypi
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ inputs.tag }}-${{ inputs.registry }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download the release distributions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.whl' --pattern '*.tar.gz' --dir dist
+      - run: python -m pip install build twine
+      - name: Check tag, package identity and wheel source
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          python - <<'PY'
+          import email
+          import os
+          import tarfile
+          import zipfile
+          from pathlib import Path
+          from tuneio import __version__
+
+          version = __version__
+          assert os.environ['RELEASE_TAG'] == 'v' + version, 'Tag and package version differ'
+          expected = {f'tuneio-{version}-py3-none-any.whl', f'tuneio-{version}.tar.gz'}
+          assert {p.name for p in Path('dist').iterdir()} == expected, 'Unexpected release files'
+          with zipfile.ZipFile(Path('dist') / f'tuneio-{version}-py3-none-any.whl') as wheel:
+              meta = email.message_from_bytes(wheel.read(f'tuneio-{version}.dist-info/METADATA'))
+              assert meta['Name'] == 'tuneio' and meta['Version'] == version
+              for path in Path('tuneio').rglob('*'):
+                  if path.is_file() and '__pycache__' not in path.parts:
+                      assert wheel.read(path.as_posix()) == path.read_bytes(), f'Wheel differs from tag: {path}'
+          with tarfile.open(Path('dist') / f'tuneio-{version}.tar.gz') as archive:
+              prefix = f'tuneio-{version}/'
+              meta = email.message_from_bytes(archive.extractfile(prefix + 'PKG-INFO').read())
+              assert meta['Name'] == 'tuneio' and meta['Version'] == version
+              for path in Path('tuneio').rglob('*'):
+                  if path.is_file() and '__pycache__' not in path.parts:
+                      assert archive.extractfile(prefix + path.as_posix()).read() == path.read_bytes(), f'Source archive differs from tag: {path}'
+          PY
+      - run: python -m twine check dist/*
+      - run: python scripts/smoke_wheel.py dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-distributions
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.registry }}
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-distributions
+          path: dist
+      - name: Upload to TestPyPI
+        if: inputs.registry == 'testpypi'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+      - name: Upload to PyPI
+        if: inputs.registry == 'pypi'
+        uses: pypa/gh-action-pypi-publish@release/v1

@@ -1,6 +1,6 @@
 # tuneio
 
-tuneio is a terminal-first tool for observing HTTP APIs and applying reviewed adaptive caching. Discover FastAPI candidates or import OpenAPI, capture a baseline, approve a cache policy, and compare it with a matched run. tuneio 2.1.0b2 is a developer beta candidate.
+tuneio is a terminal-first tool for observing HTTP APIs and applying reviewed adaptive caching. Discover FastAPI candidates or import OpenAPI, capture a baseline, approve a cache policy, and compare it with a matched run. tuneio 2.1.0b3 is a developer beta candidate.
 
 ## Install a local wheel
 

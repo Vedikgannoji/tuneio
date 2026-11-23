@@ -1,4 +1,5 @@
 include README.md README_DEMO.md CHANGELOG.md CONTRIBUTING.md SECURITY.md
+include LICENSE
 include docs/TERMINAL_GUIDE.md
 include docs/reference/tuneio_CLI_Product_PRD.md
 recursive-include tuneio *.py *.html *.css *.js *.json

@@ -1,6 +1,8 @@
 # Developer beta candidate review
 
-Candidate version 2.1.0b2 includes numbered choices, in-app demo and proxy controls, live terminal monitoring and matched comparisons. Use the [terminal guide](../TERMINAL_GUIDE.md) for the complete application workflow.
+Use [the publishing walkthrough](PUBLISHING.md) for TestPyPI and PyPI account settings and the manual upload workflow.
+
+Candidate version 2.1.0b3 includes numbered choices, in-app demo and proxy controls, live terminal monitoring and matched comparisons. Use the [terminal guide](../TERMINAL_GUIDE.md) for the complete application workflow.
 
 ## Validate distributions
 
@@ -14,7 +16,7 @@ node --test tests/workflow.test.cjs tests/product_ui.test.cjs
 python -m build
 python -m twine check dist/*
 python scripts/smoke_wheel.py dist
-python scripts/smoke_installers.py dist/tuneio-2.1.0b2-py3-none-any.whl
+python scripts/smoke_installers.py dist/tuneio-2.1.0b3-py3-none-any.whl
 ```
 
 Start with an empty dist directory or build into a new directory. The wheel smoke installs in a new venv and runs the CLI outside the source tree. Its real HTTP journey exercises both disposable upstreams, including read analysis, approval, warmup, comparison, invalidation, credential bypass, telemetry and rollback. The installer script covers pip, pipx and uv. Supply `--previous PATH_TO_REVIEWED_PREVIEW_WHEEL` to test upgrading from an earlier distribution. The hosted **Backend quality** workflow runs the nine OS/Python combinations and the **Prepare beta distributions** workflow exercises the installer checks.

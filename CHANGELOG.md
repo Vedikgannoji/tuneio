@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.0b3 - Registry publishing preparation
+
+- Publish under the MIT license.
+- Add a manual TestPyPI and PyPI workflow that verifies release distributions against their tag before uploading.
+
 ## 2.1.0b2 - One-window terminal workspace
 
 - Select capture stages, environments, invalidating write methods and approvals by number or with arrow keys. Paths and other custom values use editable text fields.
