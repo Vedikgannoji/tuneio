@@ -8,10 +8,12 @@ from pathlib import Path
 import sys
 
 from ._version import __version__
+from .terminal_reports import review_lines, summary
 from .terminal_ui import Keyboard, Theme, clip, terminal_size
 
 MAX_INPUT=4096
 PLANNED=()
+SUMMARY_COMMANDS = {'config','doctor','status','endpoints','insights','cache','optimize','sessions','report','baseline'}
 
 
 class InputTooLong(Exception):
@@ -56,7 +58,7 @@ GROUPS={
     )),
     '4':('Reports and history',(
         Action('1','List stored sessions',('sessions',),'read_local'),
-        Action('2','Show stored telemetry JSON',('report','--format','json'),'read_local'),
+        Action('2','View stored telemetry summary',('report','--format','json'),'read_local'),
         Action('3','Export stored telemetry JSON',('report','--format','json'),'write_export','export'),
         Action('4','Export live telemetry JSON',('report','--live','--format','json'),'query_proxy_and_export','export'),
         Action('5','Compare baseline and optimized captures',('compare',),'read_and_export','compare'),
@@ -104,39 +106,49 @@ class Workspace:
         return self.ask(prompt+' [y/N]: ').lower() in ('y','yes')
 
     def help(self):
-        self.say('Select a number or letter, then press Enter. b returns; q exits; Ctrl+C exits.')
+        self.say('Use an arrow key and Enter, or press a menu shortcut. In plain mode, press Enter after the shortcut.')
+        self.say('b goes back. q or Ctrl+C exits.')
         self.say('Entry is offline. Session actions query a proxy already running with the selected config.')
         self.say('Create config, then run autotuner serve --config YOUR_CONFIG in another terminal for session actions.')
         self.say('The proxy routes traffic to your upstream; installing Autotuner alone does not connect your API.')
         self.say('Fast origins can correctly remain uncached. Cache rules and invalidation need explicit configuration.')
         self.say('Monitor shows live traffic and tuning. Use Reports to compare two matched read captures.')
 
-    def structured(self, args):
+    def run_json(self, args):
         output = StringIO()
         with redirect_stdout(output):
-            result = self.invoke(['--no-input', *args, '--json'])
+            code = self.invoke(['--no-input', *args, '--json'])
+        raw = output.getvalue()
+        return code, json.loads(raw) if raw else None
+
+    def structured(self, args):
+        result, data = self.run_json(args)
         if result != 0:
             self.say(f'Action did not complete (exit {result}). Check the diagnostic above.')
             return None
-        return json.loads(output.getvalue())
+        return data
+
+    def render(self, lines):
+        for line in lines:
+            for part in line.split('\n'):
+                safe = display(part)
+                self.say(self.theme.glyph(safe, safe.encode('ascii', 'replace').decode('ascii')))
 
     def review(self, args, *, pick_config=False):
         preview = self.structured(args)
         if preview is None:
             return
-        for key in ('upstream','proxy','listen','selected','policy','previous_policy','workload','reason',
-                    'requirements','evidence','activation','limits','activation_boundary','output'):
-            if key in preview:
-                item = preview[key]
-                value = json.dumps(item, indent=2) if isinstance(item, (list, dict)) else display(item)
-                self.say(self.theme.paint('accent', key.replace('_', ' ').capitalize()))
-                self.say(value)
+        self.render(review_lines(preview))
         if not self.confirm('Apply this exact preview?'):
             return
-        if self.invoke(['--no-input', *args, '--apply', preview['review_token']]) == 0:
+        code, saved = self.run_json([*args, '--apply', preview['review_token']])
+        if saved and args[0] == 'baseline':
+            self.render(summary('baseline', saved))
+        if code == 0:
             if pick_config:
                 self.config = selected_path(preview['output'], self.project)
-                self.say('Selected ' + display(self.config) + ' for the next proxy start.')
+                self.render(['Saved and selected ' + str(self.config) + ' for the next proxy start.',
+                             f'Use autotuner serve --config "{self.config}" in the proxy terminal.'])
         else:
             self.say('Apply did not complete. Check the diagnostic above.')
 
@@ -242,7 +254,9 @@ class Workspace:
             cmd = ['compare', str(selected_path(before,self.project)), str(selected_path(after,self.project))]
             if output:
                 cmd += ['--output='+str(selected_path(output,self.project))]
-            self.invoke(['--no-input', *cmd])
+            code = self.invoke(['--no-input', *cmd])
+            if code in (0, 3) and output:
+                self.render([f'Comparison saved to {selected_path(output, self.project)}'])
             return
         if action.prompt == 'discover':
             code = self.invoke(['--no-input', 'discover', '--project', str(self.project)])
@@ -281,8 +295,19 @@ class Workspace:
             target=self.ask('Export file path (b cancels): ')
             if not target or target.lower()=='b':return
             args+=['--output',str(selected_path(target,self.project))]
-        code=self.invoke(['--no-input',*args])
-        self.say('Action completed.' if code==0 else f'Action did not complete (exit {code}). Check the diagnostic above.')
+        if args[0] in SUMMARY_COMMANDS and not (args[0] == 'report' and action.prompt == 'export'):
+            code, data = self.run_json(args)
+            if data:
+                self.render(summary(args[0], data))
+        else:
+            code = self.invoke(['--no-input', *args])
+            data = None
+        if code != 0:
+            self.say(f'Action did not complete (exit {code}). Check the diagnostic above.')
+        elif args[0] == 'report' and action.prompt == 'export':
+            self.render([f'Report saved to {args[-1]}'])
+        elif not data:
+            self.say('Action completed.')
 
     def choose(self, group):
         if not self.theme.rich:
@@ -290,25 +315,14 @@ class Workspace:
         options = ([(key, label) for key,(label,_) in GROUPS.items()] if group is None
                    else [(item.key, item.label) for item in GROUPS[group][1]])
         selected = 0
-        with self.keyboard.active():
+        displayed = None
+        with self.theme.fullscreen(), self.keyboard.active():
             while True:
                 width, height = terminal_size()
-                top = self.theme.banner(width, height)
-                top += [self.theme.paint('muted', clip(f'API PERFORMANCE WORKSPACE  /  {__version__}', width)), '',
-                        self.theme.paint('text', clip(f'Project  {self.project}', width)),
-                        self.theme.paint('muted', clip(f'Config   {self.config}', width)), '',
-                        self.theme.paint('accent', clip(GROUPS[group][0] if group else 'WORKSPACE', width))]
-                top = top[:max(0, height-3)]
-                slots = min(len(options), max(1, height-len(top)-2))
-                start = min(max(0, selected-slots+1), len(options)-slots)
-                for index in range(start, start+slots):
-                    key, label = options[index]
-                    choice = clip(f' {"›" if index == selected else " "}  {key:>2}   {label}  ', width)
-                    style = 'selected' if index == selected else 'text'
-                    top.append(self.theme.paint(style, self.theme.glyph(choice, choice.replace('›','>'))))
-                help_text = 'p Project   c Config   h Help   q Quit' if group is None else 'b Back   h Help   q Quit'
-                top.append(self.theme.paint('muted', clip(help_text, width)))
-                self.theme.screen(top)
+                state = width, height, selected
+                if state != displayed:
+                    self.draw_menu(group, options, selected, width, height)
+                    displayed = state
                 key = self.keyboard.read(1)
                 if key in ('up','k','down','j'):
                     selected = (selected + (-1 if key in ('up','k') else 1)) % len(options)
@@ -319,10 +333,29 @@ class Workspace:
                 elif key and key in {item[0] for item in options} | {'b','q','h','?','p','c','0'}:
                     return key
 
+    def draw_menu(self, group, options, selected, width, height):
+        top = self.theme.banner(width, height)
+        top += [self.theme.paint('muted', clip(f'API PERFORMANCE WORKSPACE  /  {__version__}', width)), '',
+                self.theme.paint('text', clip(f'Project  {self.project}', width)),
+                self.theme.paint('muted', clip(f'Config   {self.config}', width)), '',
+                self.theme.paint('accent', clip(GROUPS[group][0] if group else 'WORKSPACE', width))]
+        top = top[:max(0, height-3)]
+        slots = min(len(options), max(1, height-len(top)-2))
+        start = min(max(0, selected-slots+1), len(options)-slots)
+        for index in range(start, start+slots):
+            key, label = options[index]
+            marker = self.theme.glyph('\u203a', '>') if index == selected else ' '
+            choice = clip(f' {marker}  {key:>2}   {label}  ', width)
+            top.append(self.theme.paint('selected' if index == selected else 'text', choice))
+        help_text = 'p Project   c Config   h Help   q Quit' if group is None else 'b Back   h Help   q Quit'
+        top.append(self.theme.paint('muted', clip(help_text, width)))
+        self.theme.screen(top)
+
     def loop(self):
         group=None
-        self.say('Autotuner '+__version__+' | Terminal workspace')
-        self.say('No project scanning, API traffic or configuration changes occur on entry.')
+        if not self.theme.rich:
+            self.say('Autotuner '+__version__+' | Terminal workspace')
+            self.say('No project scanning, API traffic or configuration changes occur on entry.')
         while True:
             if not self.theme.rich:
                 self.say('\nProject: '+display(self.project)+'\nConfig: '+display(self.config))
@@ -354,11 +387,16 @@ class Workspace:
                             if not target.is_dir():raise ValueError()
                             self.project=target;self.config=target/'autotuner.json'
                         else:self.config=target
-                    except (OSError,ValueError):self.say('Cannot select that path. Check the directory or file name.')
+                    except (OSError,ValueError):
+                        self.say('Cannot select that path. Check the directory or file name.')
+                        if self.theme.rich:
+                            self.ask('Press Enter to return: ')
                     continue
             else:
                 action=next((a for a in GROUPS[group][1] if a.key==choice),None)
                 if action is not None:
+                    if self.theme.rich and action.prompt != 'monitor':
+                        self.say('\n' + self.theme.paint('accent', action.label))
                     try:self.execute(action)
                     except (OSError,ValueError):self.say('Cannot use that input or path. No automatic retry was made.')
                     if self.theme.rich and action.prompt != 'monitor':

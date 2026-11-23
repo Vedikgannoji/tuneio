@@ -6,6 +6,8 @@ Run `autotuner` from your project or use `autotuner menu --project PATH --config
 
 The terminal supplies the font. For the purple block-letter title and highlighted selection, use a true-color terminal such as Windows Terminal with Cascadia Mono or JetBrains Mono. On narrow terminals the title fits on one line. `--plain` and `NO_COLOR=1` use line prompts. Redirected scripts can use `autotuner menu --json` for the action list.
 
+In the keyboard-driven view, menus and the live monitor redraw in their own screen. Menu prompts and results stay in your terminal history. Use **Reports and history → View stored telemetry summary** to check request counts, p95 latency, errors, and cache hits. Choose an **Export** action for the full JSON, or pass `--json` to scripting commands that support it.
+
 ## Complete demo on Windows
 
 Use three Command Prompt windows. Choose free ports if 3000 or 8080 are already occupied. The RAM upstream and the files under `tmp\beta-review` are disposable. Choose a new directory name for a second run.

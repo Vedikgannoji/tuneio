@@ -25,3 +25,10 @@ Windows rejected real loopback connections with WinError 10013. The installed re
 Seven installed CLI startup trials per command on the managed host recorded medians of 790 ms for help, 513 ms for version and 480 ms for menu JSON. Help and version exceeded the proposed 500 ms median budget on this host. Reference-host measurements and terminal refresh CPU qualification are pending.
 
 The candidate checker still requires qualification, soak and reviewer proofs. Owner-approved licensing and publisher identity, TestPyPI artifact verification, and public registry authorization are release decisions. See [developer beta candidate review](../release/DEVELOPER_BETA.md) for commands and evidence requirements.
+
+## Terminal usability follow-up
+
+- The rich menu and monitor use a separate terminal screen. Idle menu polls leave the last frame in place, and the renderer leaves the cursor on the last displayed row.
+- Menu results use summaries for configuration, policy review, metrics and stored telemetry. Export actions retain the full JSON.
+- The focused terminal and developer workflow run passed 76 tests. The full run used `python scripts/test_socketless.py --basetemp tmp/ui-release-tests --junitxml=tmp/ui-release-pytest.xml -ra` and passed 646 tests with 93.10% coverage. The sandbox skipped one symlink test. The core gate passed with 100% statement and branch coverage.
+- Windows pseudoterminal checks exercised rich menu navigation, stored telemetry, monitor tabs with a fixture snapshot, and screen restoration. The rebuilt wheel passed metadata validation and the local isolated-environment smoke using existing dependencies.

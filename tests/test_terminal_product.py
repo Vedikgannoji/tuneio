@@ -99,7 +99,7 @@ def test_monitor_live_state_actions_and_resize():
     assert 'DISCONNECTED / LAST SNAPSHOT' in '\n'.join(monitor.lines(80, 18))
     monitor.input('r')
     monitor.input('3')
-    assert not monitor.error and 'slow_upstream' in '\n'.join(monitor.lines(68, 18))
+    assert not monitor.error and 'Slow upstream' in '\n'.join(monitor.lines(68, 18))
     monitor.input('i')
     monitor.input('4')
     assert monitor.interval == 5 and 'runtime' in '\n'.join(monitor.lines(80, 18))
@@ -148,6 +148,38 @@ def test_rich_menu_arrows_render_selection_and_return(tmp_path, monkeypatch):
     assert workspace.choose(None) == '2'
     assert workspace.choose('2') == 'b'
     assert '\x1b[H' in stream.getvalue() and '[1;48;2;79;46;131' in stream.getvalue()
+
+
+def test_idle_menu_draws_once_and_restores_screen_on_interrupt(tmp_path, monkeypatch):
+    stream = io.StringIO()
+    workspace = terminal.Workspace(tmp_path, tmp_path/'base.json', Mock(), io.StringIO(), stream)
+    workspace.theme.rich = True
+    workspace.keyboard = SimpleNamespace(active=nullcontext, read=Mock(side_effect=[None, '', None, KeyboardInterrupt]))
+    monkeypatch.setattr(terminal, 'terminal_size', lambda: (75, 16))
+    with pytest.raises(KeyboardInterrupt):
+        workspace.choose(None)
+    output = stream.getvalue()
+    assert output.count('\x1b[H') == 1
+    assert output.startswith('\x1b[?1049h') and output.endswith('\x1b[?1049l')
+    assert not output.removesuffix('\x1b[?1049l').endswith('\n')
+
+
+def test_resource_units_and_wrapped_findings():
+    from autotuner.monitor import tab_rows
+    data = snapshot()
+    data['status']['storage'].update(disk_bytes=4096, last_error=None, persistent=True,
+                                     transport={'completed_requests': 25})
+    data['status']['transport'].update(queue_ms=2.6847998, upstream_requests=25)
+    resources = '\n'.join(tab_rows(data, 3, ''))
+    assert '4.0 KiB' in resources and '2.68 ms' in resources and 'last error   none' in resources
+    assert 'persistent   yes' in resources and 'storage / transport' not in resources
+    assert tab_rows(data, 3, 'queue') == ['transport / queue   2.68 ms']
+    data['findings'][0]['recommendation'] = 'Check public response eligibility and invalidation on write.'
+    rows = tab_rows(data, 2, '', width=30)
+    assert len(rows) > 2 and all(len(row) <= 30 for row in rows)
+    assert rows[-1].endswith('on write.')
+    rows = tab_rows(data, 0, '', width=40)
+    assert rows[0] == 'GET /items' and rows[-1].endswith('1 hit')
 
 
 def test_monitor_key_loop_with_refresh_filter_resize_and_exit(monkeypatch):
@@ -209,12 +241,42 @@ def test_plain_guided_baseline_and_compare_dispatch_arguments(tmp_path):
             return True
     def dispatch(args):
         if args[-1]=='--json':
-            print(json.dumps(dict(review_token='preview',workload={'method':'GET','requests':8})))
+            if '--apply' in args:
+                print(json.dumps(dict(state='completed', findings=0, output='after.json')))
+            else:
+                workload = dict(method='GET', path='/items', requests=8, warmup=4, environment='local',
+                                delay_ms=100, timeout_seconds=3, concurrency=1, expected_status=200)
+                print(json.dumps(dict(review_token='preview',workload=workload)))
         return 0
     invoke = Mock(side_effect=dispatch)
     keys = '2\n5\noptimized\n/items\napp-v1\nlocal\n8\n4\nafter.json\ny\nb\n4\n5\nbefore.json\nafter.json\nresult.json\nq\n'
-    assert terminal.run(project=tmp_path, invoke=invoke, stdin=TTY(keys), stdout=TTY(),plain=True)==0
+    out = TTY()
+    assert terminal.run(project=tmp_path, invoke=invoke, stdin=TTY(keys), stdout=out,plain=True)==0
     preview, active, comparison = [item.args[0] for item in invoke.call_args_list]
     assert '--requests=8' in preview and '--warmup=4' in preview
-    assert active[-2:] == ['--apply','preview']
+    assert active[-3:] == ['--apply','preview','--json']
     assert comparison[1:4] == ['compare',str(tmp_path/'before.json'),str(tmp_path/'after.json')]
+    assert '4 warmup and 8 measured requests' in out.getvalue()
+    assert 'Capture saved' in out.getvalue() and 'review_token' not in out.getvalue()
+    assert 'Comparison saved to' in out.getvalue()
+
+
+def test_menu_show_report_uses_summary_and_keeps_export_action(tmp_path):
+    class TTY(io.StringIO):
+        def isatty(self):
+            return True
+    data = dict(effective_mode='observe', session_id='sample-session', started_at='2026-11-23T14:00:00Z',
+                routes=[dict(boundary='proxy', method='GET', route='/items', count=8, p95_ms=1.2345,
+                             cache_hits=3, error_rate=0)], tuning_decisions=[],
+                sampling={'sampling_may_be_incomplete': True})
+    def dispatch(args):
+        if args[-1] == '--json':
+            print(json.dumps(data))
+        return 0
+    invoke = Mock(side_effect=dispatch)
+    out = TTY()
+    assert terminal.run(project=tmp_path, invoke=invoke, stdin=TTY('4\n2\n3\nraw.json\nq\n'), stdout=out) == 0
+    assert 'GET /items | 8 requests | p95 1.23 ms' in out.getvalue()
+    assert 'last committed checkpoint' in out.getvalue() and '"routes"' not in out.getvalue()
+    assert invoke.call_args_list[0].args[0][-1] == '--json'
+    assert invoke.call_args.args[0][-2:] == ['--output', str(tmp_path/'raw.json')]

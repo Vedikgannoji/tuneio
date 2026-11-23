@@ -40,7 +40,7 @@ def clip(value, width):
 
 def terminal_size():
     size = get_terminal_size((100, 28))
-    return min(132, max(8, size.columns-1)), max(3, size.lines)
+    return min(132, max(1, size.columns-1)), max(3, size.lines)
 
 
 def windows_vt(stdout):
@@ -76,7 +76,7 @@ class Theme:
 
     def banner(self, width, height):
         if not self.rich or width < 53 or height < 21:
-            return [self.paint('title', 'AUTOTUNER')]
+            return [self.paint('title', clip('AUTOTUNER', width))]
         pixel = self.glyph('█', '#')
         return [f'\x1b[38;2;{red};{green};{blue}m' +
                 ' '.join(''.join(pixel if PIXELS[letter][row] & (1 << column) else ' '
@@ -84,8 +84,23 @@ class Theme:
                 for row, (red, green, blue) in enumerate(GRADIENT)]
 
     def screen(self, lines):
-        self.stdout.write(('\x1b[H\x1b[J' if self.rich else '') + '\n'.join(lines) + '\n')
+        # A newline after the last viewport row scrolls the whole frame.
+        frame = '\r\n'.join(lines) if self.rich else '\n'.join(lines) + '\n'
+        self.stdout.write(('\x1b[H\x1b[J' if self.rich else '') + frame)
         self.stdout.flush()
+
+    @contextmanager
+    def fullscreen(self):
+        if not self.rich:
+            yield
+            return
+        self.stdout.write('\x1b[?1049h')
+        self.stdout.flush()
+        try:
+            yield
+        finally:
+            self.stdout.write('\x1b[?1049l')
+            self.stdout.flush()
 
 
 class Keyboard:

@@ -75,7 +75,8 @@ def test_json_manifest_does_not_scan_read_config_or_connect(tmp_path,monkeypatch
 def test_available_actions_dispatch_argv_without_shell(tmp_path,group,key,answers,prefix):
     invoke=Mock(return_value=0)
     code,out,err=run_menu(tmp_path,group+'\n'+key+'\n'+answers+'q\n',invoke)
-    assert code==0 and not err and 'Action completed.' in out
+    message = 'Report saved to' if group == '4' and key in ('3','4') else 'Action completed.'
+    assert code==0 and not err and message in out
     invoke.assert_called_once()
     args=invoke.call_args.args[0]
     assert args[:len(prefix)+1]==['--no-input',*prefix]
@@ -114,7 +115,8 @@ def test_project_and_config_selection_do_not_change_process_directory(tmp_path):
     code,out,err=run_menu(tmp_path,'p\nmy project\nc\ncustom.json\n2\n1\nq\n',invoke)
     assert code==0 and not err and Path.cwd()==cwd
     assert str(next_project/'custom.json') in out
-    assert invoke.call_args.args[0][-1]==str(next_project/'custom.json')
+    args = invoke.call_args.args[0]
+    assert args[args.index('--config')+1] == str(next_project/'custom.json')
 
 
 def test_invalid_and_cancelled_path_selection(tmp_path):
@@ -137,7 +139,7 @@ def test_create_and_validate_use_existing_cli_with_no_network(tmp_path,monkeypat
     assert cli.main(['menu'])==0
     config=json.loads((tmp_path/'autotuner.json').read_text())
     assert config['mode']=='observe' and config['cache']['routes']==[]
-    assert 'valid: True' in out.getvalue()
+    assert 'Configuration is valid.' in out.getvalue()
     network.assert_not_called()
 
 

@@ -1,31 +1,52 @@
 """A keyboard-operated view of the running loopback session."""
 import sys
+from textwrap import wrap
 from time import monotonic
 
+from .terminal_reports import bytes_used, milliseconds, words
 from .terminal_ui import Keyboard, Theme, clip, terminal_size
 
 TABS = ('Endpoints', 'Cache', 'Findings', 'Resources')
 INTERVALS = (1, 2, 5, 10)
 
 
-def ms(value):
-    return '—' if value is None else f'{value:.2f} ms'
-
-
 def metrics_line(stats):
-    count = stats['count']
+    count, hits = stats['count'], stats['cache_hits']
     errors = f"{stats['error_rate']:.1%}" if count else '—'
-    return (f"{count:,} requests  ·  {stats['requests_per_second']:.2f} req/s  ·  "
-            f"p95 {ms(stats['p95_ms'])}  ·  {errors} errors  ·  {stats['cache_hits']:,} hits")
+    return (f"{count:,} {'request' if count == 1 else 'requests'} · {stats['requests_per_second']:.2f} req/s · "
+            f"p95 {milliseconds(stats['p95_ms'])} · {errors} errors · {hits:,} {'hit' if hits == 1 else 'hits'}")
 
 
-def tab_rows(data, tab, pattern):
+def resource_value(key, value):
+    if value is None:
+        return 'none' if key == 'last_error' else 'unavailable'
+    if isinstance(value, bool):
+        return 'yes' if value else 'no'
+    if isinstance(value, (int, float)):
+        if key.endswith('_ms'):
+            return milliseconds(value)
+        if key.endswith('_bytes'):
+            return bytes_used(value)
+        if key.endswith('_seconds'):
+            return f'{value:g} s'
+        return f'{value:,}'
+    return words(value)
+
+
+def tab_rows(data, tab, pattern, *, width=132):
     if tab == 0:
-        return [
-            operation + '  |  ' + metrics_line(stats)
-            for operation, stats in sorted(data['metrics']['routes'].items(), key=lambda item: -item[1]['count'])
-            if pattern in operation.casefold()
-        ]
+        rows = []
+        for operation, stats in sorted(data['metrics']['routes'].items(), key=lambda item: -item[1]['count']):
+            if pattern not in operation.casefold():
+                continue
+            details = metrics_line(stats)
+            line = operation + ' | ' + details
+            if clip(line, width) == line:
+                rows.append(line)
+            else:
+                rows.append(operation)
+                rows.extend('  ' + line for line in wrap(details, max(1, width-2)))
+        return rows
     if tab == 1:
         rules = data['policies']
         decisions = reversed(data['decisions'])
@@ -37,11 +58,18 @@ def tab_rows(data, tab, pattern):
             for event in decisions if pattern in event['rule_id'].casefold()
         ]
     if tab == 2:
-        return [f"{row['operation'] or 'Session'}   {row['code']}   {row['recommendation']}"
-                for row in data['findings'] if pattern in (row['operation'] or 'session').casefold()]
+        rows = []
+        for item in data['findings']:
+            operation = item['operation'] or 'Session'
+            if pattern not in operation.casefold():
+                continue
+            rows.append(f"{operation} | {words(item['code']).capitalize()}")
+            rows.extend('  ' + line for line in wrap(item['recommendation'], max(1,width-2)))
+        return rows
     status = data['status']
-    return [f'{group} / {key.replace("_", " ")}   {value if value is not None else "unavailable"}'
-            for group in ('runtime', 'transport', 'storage', 'limits') for key, value in status[group].items()]
+    return [f'{group} / {words(key).removesuffix(" ms")}   {resource_value(key, value)}'
+            for group in ('runtime', 'transport', 'storage', 'limits') for key, value in status[group].items()
+            if not isinstance(value, (dict, list)) and pattern in f'{group} {words(key)}'.casefold()]
 
 
 class Monitor:
@@ -100,13 +128,16 @@ class Monitor:
             bar_length = min(26, width//3)
             occupied = min(bar_length, int(bar_length*cache['accounted_bytes']/cache['byte_budget']))
             header.append(draw('accent', f"{'█'*occupied}{'░'*(bar_length-occupied)}   "
-                               f"{cache['entries']} entries · {cache['accounted_bytes']:,} B"))
-        rows = tab_rows(self.data, self.tab, self.pattern)
+                               f"{cache['entries']} entries · {bytes_used(cache['accounted_bytes'])} used"))
+        rows = tab_rows(self.data, self.tab, self.pattern, width=width)
         page = max(1, min(100, height-len(header)-3))
         self.index = min(self.index, max(0, len(rows)-page))
         header.append(draw('border', '─'*width))
         visible = rows[self.index:self.index+page]
-        body = [draw('text', row) for row in visible] or [draw('muted', 'No matching observations.')]
+        empty = ('No rows match the filter.' if self.pattern else
+                 ('No endpoint traffic in this window.', 'No active cache rules or recorded decisions.',
+                  'No findings in this window.', 'No resource measurements.')[self.tab])
+        body = [draw('text', row) for row in visible] or [draw('muted', empty)]
         label = f'{self.index+1}–{self.index+len(visible)} of {len(rows)}' if visible else '0 rows'
         return (header + body + [draw('muted', label + (' · filter ' + self.pattern if self.pattern else '')), footer])[:height]
 
@@ -127,12 +158,16 @@ class Monitor:
 
     def run(self, stdin, stdout, keyboard):
         due = 0
+        displayed = None
         while True:
             if not self.paused and self.clock() >= due:
                 self.update()
                 due = self.clock() + self.interval
             if self.theme.rich:
-                self.theme.screen(self.lines(*terminal_size()))
+                lines = self.lines(*terminal_size())
+                if lines != displayed:
+                    self.theme.screen(lines)
+                    displayed = lines
                 with keyboard.active():
                     key = keyboard.read(1 if self.paused else max(0, min(1, due-self.clock())))
             else:
@@ -146,7 +181,11 @@ class Monitor:
             if key in ('q','back'):
                 return
             if key == '/':
-                stdout.write('Operation or rule filter (blank clears): ')
+                if self.theme.rich:
+                    self.theme.screen([self.theme.paint('title', 'AUTOTUNER / FILTER'), ''])
+                    displayed = None
+                label = ('Operation', 'Rule', 'Operation', 'Resource')[self.tab]
+                stdout.write(f'{label} filter (blank clears): ')
                 stdout.flush()
                 line = stdin.readline(4097)
                 if not line or len(line) > 4096:
@@ -175,7 +214,8 @@ def run(fetch, args, errors, *, stdin=None, stdout=None):
         return 0
     view = Monitor(fetch, errors, Theme(stdout, plain=args.plain), args.window, args.interval, args.filter)
     try:
-        view.run(stdin, stdout, Keyboard(stdin))
+        with view.theme.fullscreen():
+            view.run(stdin, stdout, Keyboard(stdin))
     except EOFError:
         return 0
     except KeyboardInterrupt:
